@@ -63,12 +63,12 @@ attach spc at mainbus
 file arch/luna88k/dev/spc.c				spc
 file arch/luna88k/dev/mb89352.c				spc
 
-# XXX: now testing
-#device pcm: audio, auconv, mulaw
-#attach pcm at mainbus
-#file arch/luna88k/dev/nec86.c				pcm needs-flag
-#file arch/luna88k/dev/nec86hw.c			pcm needs-flag
-#file arch/luna88k/dev/nec86_luna88k.c			pcm needs-flag
+# NEC PC-9801-86 sound card
+device pcm: audio, auconv, mulaw
+attach pcm at mainbus
+file arch/luna88k/dev/nec86.c				pcm needs-flag
+file arch/luna88k/dev/nec86hw.c				pcm needs-flag
+file arch/luna88k/dev/nec86_luna88k.c			pcm needs-flag
 
 # list of standard files
 file	arch/luna88k/luna88k/clock.c
