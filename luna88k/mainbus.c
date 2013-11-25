@@ -42,6 +42,7 @@
 #include <machine/cpu.h>
 
 #include "lcd.h"
+#include "pcm.h"
 
 static const struct mainbus_attach_args devs[] = {
 	{ "clock", 0x45000000, 6,  LUNA_88K|LUNA_88K2 }, /* Mostek/Dallas TimeKeeper */
