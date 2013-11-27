@@ -47,20 +47,19 @@
 #include <sys/device.h>
 #include <sys/proc.h>
 
-#include <machine/cpu.h>
-#include <machine/pio.h>
 #include <machine/bus.h>
+#include <machine/cpu.h>
 
 #include <sys/audioio.h>
 #include <dev/audio_if.h>
 
-#include <i386/Cbus/dev/nec86reg.h>
-#include <i386/Cbus/dev/nec86hwvar.h>
-#include <i386/Cbus/dev/nec86var.h>
+#include <luna88k/dev/nec86reg.h>
+#include <luna88k/dev/nec86hwvar.h>
+#include <luna88k/dev/nec86var.h>
 
-/*
- * ISA device declaration
- */
+#define NEC_SCR_SIDMASK		0xf0
+#define NEC_SCR_MASK		0x0f
+#define NEC_SCR_EXT_ENABLE	0x01
 
 extern struct cfdriver pcm_cd;
 
@@ -94,24 +93,26 @@ struct audio_hw_if nec86_hw_if = {
     nec86hw_mixer_set_port,
     nec86hw_mixer_get_port,
     nec86hw_mixer_query_devinfo,
-    NULL,			/* malloc */
-    NULL,			/* free */
-    NULL,			/* round */
-    NULL,			/* mmap */
+    NULL,			/* allocm */
+    NULL,			/* freem */
+    NULL,			/* round_buffersize */
+    NULL,			/* mappage */
     nec86_get_props,
     NULL,			/* trigger_output */
     NULL,			/* trigger_input */
+#if 0
     NULL,			/* dev_ioctl */
-    NULL			/* get_locks */
+    NULL,			/* get_locks */
+#endif
+    NULL			/* get_default_params */
 };
 
 /*
  * Probe for NEC PC-9801-86 SoundBoard hardware.
  */
 int
-nec86_probesubr(iot, ioh, n86ioh)
-    bus_space_tag_t iot;
-    bus_space_handle_t ioh, n86ioh;
+nec86_probesubr(bus_space_tag_t iot, bus_space_handle_t ioh,
+	bus_space_handle_t n86ioh)
 {
     u_int8_t data;
 
@@ -120,7 +121,11 @@ nec86_probesubr(iot, ioh, n86ioh)
 	return -1;
 #endif	/* notyet */
 
+#if 0
     if (n86ioh == NULL)
+#else
+    if (n86ioh == 0)
+#endif
 	data = 0x40;
     else
         data = bus_space_read_1(iot, n86ioh, NEC86_SOUND_ID);
@@ -150,8 +155,7 @@ nec86_probesubr(iot, ioh, n86ioh)
 #define MODEL1_NAME	"PC-9801-86 soundboard"
 
 void
-nec86_attachsubr(sc)
-    struct nec86_softc *sc;
+nec86_attachsubr(struct nec86_softc *sc)
 {
     struct nec86hw_softc *ysc = &sc->sc_nec86hw;
     bus_space_tag_t iot = sc->sc_n86iot;
@@ -167,7 +171,11 @@ nec86_attachsubr(sc)
     }
     ysc->model = model;
 
+#if 0
     if (n86ioh != NULL)
+#else
+    if (n86ioh != 0)
+#endif
     {
     	data = bus_space_read_1(iot, n86ioh, NEC86_SOUND_ID);
     	data &= ~NEC_SCR_MASK;
@@ -189,9 +197,7 @@ nec86_attachsubr(sc)
  * Various routines to interface to higher level audio driver.
  */
 int
-nec86getdev(addr, retp)
-    void *addr;
-    struct audio_device *retp;
+nec86getdev(void *addr, struct audio_device *retp)
 {
     *retp = nec86_device;
 

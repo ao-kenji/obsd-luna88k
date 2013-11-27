@@ -40,7 +40,9 @@
 #ifndef	_NEC86VAR_H_
 #define	_NEC86VAR_H_
 
+#if 0
 #include <i386/systm/necssreg.h>		/* XXX */
+#endif
 
 struct nec86_softc {
 	struct nec86hw_softc sc_nec86hw;
