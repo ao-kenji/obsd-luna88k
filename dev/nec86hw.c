@@ -1,5 +1,5 @@
+/*	$OpenBSD$	*/
 /*	$NecBSD: nec86hw.c,v 1.13 1998/03/14 07:04:54 kmatsuda Exp $	*/
-/*	$NetBSD$	*/
 
 /*
  * [NetBSD for NEC PC-98 series]
@@ -52,22 +52,23 @@
 #include <sys/device.h>
 #include <sys/proc.h>
 
-#include <machine/cpu.h>
-#include <machine/pio.h>
 #include <machine/bus.h>
+#include <machine/cpu.h>
 
 #include <sys/audioio.h>
 #include <dev/audio_if.h>
 #include <dev/mulaw.h>
 #include <dev/auconv.h>
 
+#if 0
 #include <dev/ic/ym2203reg.h>
-#include <i386/Cbus/dev/nec86reg.h>
-#include <i386/Cbus/dev/nec86hwvar.h>
-#include <i386/Cbus/dev/nec86var.h>
+#endif
+#include <luna88k/dev/nec86reg.h>
+#include <luna88k/dev/nec86hwvar.h>
+#include <luna88k/dev/nec86var.h>
 
 #ifdef AUDIO_DEBUG
-extern void Dprintf __P((const char *, ...));
+extern void Dprintf(const char *, ...);
 #define DPRINTF(x)	if (nec86hwdebug) Dprintf x
 #define DPRINTF2(l, x)	if (nec86hwdebug >= l) Dprintf x
 int	nec86hwdebug = 0;
@@ -94,8 +95,8 @@ static int nec86hw_rate_table[NEC86HW_NRATE_TYPE][NEC86_NRATE] = {
     { 44100, 33075, 22050, 16000, 11025, 8000, 5513, 4000 },
 };
 
-int nec86hw_set_output_block __P((struct nec86hw_softc *, int));
-int nec86hw_set_input_block __P((struct nec86hw_softc *, int));
+int nec86hw_set_output_block(struct nec86hw_softc *, int);
+int nec86hw_set_input_block(struct nec86hw_softc *, int);
 
 /*
  * Function tables.
@@ -124,8 +125,7 @@ static struct nec86hw_functable_entry nec86hw_functable[] = {
  * pseudo-device driver.
  */
 void
-nec86hw_attach(sc)
-    struct nec86hw_softc *sc;
+nec86hw_attach(struct nec86hw_softc *sc)
 {
     bus_space_tag_t iot = sc->sc_iot;
     bus_space_handle_t ioh = sc->sc_ioh;
@@ -166,9 +166,7 @@ nec86hw_attach(sc)
  */
 
 int
-nec86hw_open(arg, flags)
-    void *arg;
-    int flags;
+nec86hw_open(void *arg, int flags)
 {
     struct nec86hw_softc *sc = arg;
     DPRINTF(("nec86hw_open: sc=0x%x\n", sc));
@@ -199,8 +197,7 @@ nec86hw_open(arg, flags)
 }
 
 void
-nec86hw_close(addr)
-    void *addr;
+nec86hw_close(void *addr)
 {
     register struct nec86hw_softc *sc = (struct nec86hw_softc *) addr;
 
@@ -214,10 +211,8 @@ nec86hw_close(addr)
 }
 
 int
-nec86hw_set_params(addr, mode, usemode, p, r)
-    void *addr;
-    int mode, usemode;
-    struct audio_params *p, *r;
+nec86hw_set_params(void *addr, int mode, int usemode, struct audio_params *p,
+		struct audio_params *r)
 {
     register struct nec86hw_softc *sc = (struct nec86hw_softc *) addr;
     int rate_type = NEC86HW_RATE_TYPE(sc->sc_cfgflags);
@@ -300,56 +295,54 @@ nec86hw_set_params(addr, mode, usemode, p, r)
 }
 
 int
-nec86hw_query_encoding(addr, fp)
-    void *addr;
-    struct audio_encoding *fp;
+nec86hw_query_encoding(void *addr, struct audio_encoding *fp)
 {
 
     switch (fp->index) {
     case 0:
-	strcpy(fp->name, AudioEmulaw);
+	strlcpy(fp->name, AudioEmulaw, sizeof(fp->name));
 	fp->encoding = AUDIO_ENCODING_ULAW;
 	fp->precision = 8;
 	fp->flags = AUDIO_ENCODINGFLAG_EMULATED;
 	break;
     case 1:
-	strcpy(fp->name, AudioEalaw);
+	strlcpy(fp->name, AudioEalaw, sizeof(fp->name));
 	fp->encoding = AUDIO_ENCODING_ALAW;
 	fp->precision = 8;
 	fp->flags = AUDIO_ENCODINGFLAG_EMULATED;
 	break;
     case 2:
-	strcpy(fp->name, AudioEulinear);
+	strlcpy(fp->name, AudioEulinear, sizeof(fp->name));
 	fp->encoding = AUDIO_ENCODING_ULINEAR;
 	fp->precision = 8;
 	fp->flags = 0;
 	break;
     case 3:
-	strcpy(fp->name, AudioEslinear);
+	strlcpy(fp->name, AudioEslinear, sizeof(fp->name));
 	fp->encoding = AUDIO_ENCODING_SLINEAR;
 	fp->precision = 8;
 	fp->flags = AUDIO_ENCODINGFLAG_EMULATED;
 	break;
     case 4:
-	strcpy(fp->name, AudioEulinear_le);
+	strlcpy(fp->name, AudioEulinear_le, sizeof(fp->name));
 	fp->encoding = AUDIO_ENCODING_ULINEAR_LE;
 	fp->precision = 16;
 	fp->flags = AUDIO_ENCODINGFLAG_EMULATED;
 	break;
     case 5:
-	strcpy(fp->name, AudioEulinear_be);
+	strlcpy(fp->name, AudioEulinear_be, sizeof(fp->name));
 	fp->encoding = AUDIO_ENCODING_ULINEAR_BE;
 	fp->precision = 16;
 	fp->flags = AUDIO_ENCODINGFLAG_EMULATED;
 	break;
     case 6:
-	strcpy(fp->name, AudioEslinear_le);
+	strlcpy(fp->name, AudioEslinear_le, sizeof(fp->name));
 	fp->encoding = AUDIO_ENCODING_SLINEAR_LE;
 	fp->precision = 16;
 	fp->flags = 0;
 	break;
     case 7:
-	strcpy(fp->name, AudioEslinear_be);
+	strlcpy(fp->name, AudioEslinear_be, sizeof(fp->name));
 	fp->encoding = AUDIO_ENCODING_SLINEAR_BE;
 	fp->precision = 16;
 	fp->flags = AUDIO_ENCODINGFLAG_EMULATED;
@@ -363,9 +356,7 @@ nec86hw_query_encoding(addr, fp)
 }
 
 int
-nec86hw_round_blocksize(addr, blk)
-    void *addr;
-    int blk;
+nec86hw_round_blocksize(void *addr, int blk)
 {
     u_int base = NEC86_INTRBLK_UNIT;
 
@@ -378,9 +369,7 @@ nec86hw_round_blocksize(addr, blk)
 }
 
 int
-nec86hw_set_out_port(addr, port)
-    void *addr;
-    int port;
+nec86hw_set_out_port(void *addr, int port)
 {
     register struct nec86hw_softc *sc = (struct nec86hw_softc *) addr;
 
@@ -395,8 +384,7 @@ nec86hw_set_out_port(addr, port)
 }
 
 int
-nec86hw_get_out_port(addr)
-    void *addr;
+nec86hw_get_out_port(void *addr)
 {
     register struct nec86hw_softc *sc = (struct nec86hw_softc *) addr;
 
@@ -406,9 +394,7 @@ nec86hw_get_out_port(addr)
 }
 
 int
-nec86hw_set_in_port(addr, port)
-    void *addr;
-    int port;
+nec86hw_set_in_port(void *addr, int port)
 {
     register struct nec86hw_softc *sc = (struct nec86hw_softc *) addr;
 
@@ -423,8 +409,7 @@ nec86hw_set_in_port(addr, port)
 }
 
 int
-nec86hw_get_in_port(addr)
-    void *addr;
+nec86hw_get_in_port(void *addr)
 {
     register struct nec86hw_softc *sc = (struct nec86hw_softc *) addr;
 
@@ -434,8 +419,7 @@ nec86hw_get_in_port(addr)
 }
 
 int
-nec86hw_commit_settings(addr)
-    void *addr;
+nec86hw_commit_settings(void *addr)
 {
     register struct nec86hw_softc *sc = (struct nec86hw_softc *) addr;
     int i;
@@ -476,9 +460,7 @@ nec86hw_commit_settings(addr)
 }
 
 int
-nec86hw_setfd(addr, flag)
-    void *addr;
-    int flag;
+nec86hw_setfd(void *addr, int flag)
 {
 
     /* Can't do full-duplex */
@@ -486,9 +468,7 @@ nec86hw_setfd(addr, flag)
 }
 
 int
-nec86hw_mixer_set_port(addr, cp)
-    void *addr;
-    mixer_ctrl_t *cp;
+nec86hw_mixer_set_port(void *addr, mixer_ctrl_t *cp)
 {
 
     DPRINTF(("nec86hw_mixer_set_port:\n"));
@@ -498,9 +478,7 @@ nec86hw_mixer_set_port(addr, cp)
 }
 
 int
-nec86hw_mixer_get_port(addr, cp)
-    void *addr;
-    mixer_ctrl_t *cp;
+nec86hw_mixer_get_port(void *addr, mixer_ctrl_t *cp)
 {
 
     DPRINTF(("nec86hw_mixer_get_port:\n"));
@@ -510,9 +488,7 @@ nec86hw_mixer_get_port(addr, cp)
 }
 
 int
-nec86hw_mixer_query_devinfo(addr, dip)
-    void *addr;
-    mixer_devinfo_t *dip;
+nec86hw_mixer_query_devinfo(void *addr, mixer_devinfo_t *dip)
 {
 
     DPRINTF(("nec86hw_mixer_query_devinfo:\n"));
@@ -522,9 +498,7 @@ nec86hw_mixer_query_devinfo(addr, dip)
 }
 
 int
-nec86hw_set_output_block(sc, cc)
-	struct nec86hw_softc *sc;
-	int cc;
+nec86hw_set_output_block(struct nec86hw_softc *sc, int cc)
 {
     int bpf, hw_blocksize, watermark;
 
@@ -573,9 +547,7 @@ nec86hw_set_output_block(sc, cc)
 }
 
 int
-nec86hw_set_input_block(sc, cc)
-	struct nec86hw_softc *sc;
-	int cc;
+nec86hw_set_input_block(struct nec86hw_softc *sc, int cc)
 {
     int bpf, hw_blocksize, watermark, maxwatermark;
 
@@ -606,10 +578,7 @@ nec86hw_set_input_block(sc, cc)
 }
 
 int
-nec86hw_pdma_init_output(addr, buf, cc)
-	void *addr;
-	void *buf;
-	int cc;
+nec86hw_pdma_init_output(void *addr, void *buf, int cc)
 {
 	struct nec86hw_softc *sc = (struct nec86hw_softc *) addr;
 
@@ -630,10 +599,7 @@ nec86hw_pdma_init_output(addr, buf, cc)
 }
 
 int
-nec86hw_pdma_init_input(addr, buf, cc)
-	void *addr;
-	void *buf;
-	int cc;
+nec86hw_pdma_init_input(void *addr, void *buf, int cc)
 {
 	struct nec86hw_softc *sc = (struct nec86hw_softc *) addr;
 
@@ -654,11 +620,14 @@ nec86hw_pdma_init_input(addr, buf, cc)
 }
 
 int
-nec86hw_pdma_output(addr, p, cc, intr, arg)
+nec86hw_pdma_output(void *addr, void *p, int cc, void (*intr)(void *),
+		void *arg)
+#if 0
     void *addr, *p;
     int cc;
     void (*intr) __P((void *));
     void *arg;
+#endif
 {
     struct nec86hw_softc *sc = (struct nec86hw_softc *) addr;
     int bpf;
@@ -713,11 +682,13 @@ nec86hw_pdma_output(addr, p, cc, intr, arg)
 }
 
 int
-nec86hw_pdma_input(addr, p, cc, intr, arg)
+nec86hw_pdma_input(void *addr, void *p, int cc, void (*intr)(void *), void *arg)
+#if 0
     void *addr, *p;
     int cc;
     void (*intr) __P((void *));
     void *arg;
+#endif
 {
     struct nec86hw_softc *sc = (struct nec86hw_softc *) addr;
     int bpf;
@@ -758,8 +729,7 @@ nec86hw_pdma_input(addr, p, cc, intr, arg)
 }
 
 int
-nec86hw_halt_pdma(addr)
-    void *addr;
+nec86hw_halt_pdma(void *addr)
 {
     register struct nec86hw_softc *sc = (struct nec86hw_softc *) addr;
 
@@ -774,8 +744,7 @@ nec86hw_halt_pdma(addr)
 }
 
 int
-nec86hw_cont_pdma(addr)
-    void *addr;
+nec86hw_cont_pdma(void *addr)
 {
     register struct nec86hw_softc *sc = (struct nec86hw_softc *) addr;
 
@@ -790,9 +759,7 @@ nec86hw_cont_pdma(addr)
 }
 
 int
-nec86hw_speaker_ctl(addr, onoff)
-    void *addr;
-    int onoff;
+nec86hw_speaker_ctl(void *addr, int onoff)
 {
     register struct nec86hw_softc *sc = (struct nec86hw_softc *) addr;
     bus_space_tag_t iot = sc->sc_iot;
@@ -818,9 +785,7 @@ nec86hw_speaker_ctl(addr, onoff)
 
 
 u_int8_t
-nec86hw_rate_bits(sc, sr)
-    struct nec86hw_softc *sc;
-    u_long sr;
+nec86hw_rate_bits(struct nec86hw_softc *sc, u_long sr)
 {
     int i;
     u_long rval, hr, min;
@@ -841,8 +806,7 @@ nec86hw_rate_bits(sc, sr)
 }
 
 int
-nec86hw_round_watermark(wm)
-    int wm;
+nec86hw_round_watermark(int wm)
 {
     wm = (wm / NEC86_INTRBLK_UNIT) * NEC86_INTRBLK_UNIT;
 
@@ -858,8 +822,7 @@ nec86hw_round_watermark(wm)
  */
 
 int
-nec86hw_reset(sc)
-    struct nec86hw_softc *sc;
+nec86hw_reset(struct nec86hw_softc *sc)
 {
     nec86hw_stop_fifo(sc);
     nec86hw_disable_fifointr(sc);
@@ -879,8 +842,7 @@ nec86hw_reset(sc)
  * Set the mode for playing/recording.
  */
 void
-nec86hw_set_mode_playing(sc)
-    struct nec86hw_softc *sc;
+nec86hw_set_mode_playing(struct nec86hw_softc *sc)
 {
     bus_space_tag_t iot = sc->sc_iot;
     bus_space_handle_t ioh = sc->sc_ioh;
@@ -892,8 +854,7 @@ nec86hw_set_mode_playing(sc)
 }
 
 void
-nec86hw_set_mode_recording(sc)
-    struct nec86hw_softc *sc;
+nec86hw_set_mode_recording(struct nec86hw_softc *sc)
 {
     bus_space_tag_t iot = sc->sc_iot;
     bus_space_handle_t ioh = sc->sc_ioh;
@@ -908,10 +869,7 @@ nec86hw_set_mode_recording(sc)
  * Set the electric volumes.
  */
 void
-nec86hw_set_volume(sc, port, vol)
-    struct nec86hw_softc *sc;
-    int port;
-    u_int8_t vol;
+nec86hw_set_volume(struct nec86hw_softc *sc, int port, u_int8_t vol)
 {
     bus_space_tag_t iot = sc->sc_iot;
     bus_space_handle_t ioh = sc->sc_ioh;
@@ -924,8 +882,7 @@ nec86hw_set_volume(sc, port, vol)
  * Control the FIFO ring buffer on the board.
  */
 void
-nec86hw_start_fifo(sc)
-    struct nec86hw_softc *sc;
+nec86hw_start_fifo(struct nec86hw_softc *sc)
 {
     bus_space_tag_t iot = sc->sc_iot;
     bus_space_handle_t ioh = sc->sc_ioh;
@@ -938,8 +895,7 @@ nec86hw_start_fifo(sc)
 }
 
 void
-nec86hw_stop_fifo(sc)
-    struct nec86hw_softc *sc;
+nec86hw_stop_fifo(struct nec86hw_softc *sc)
 {
     bus_space_tag_t iot = sc->sc_iot;
     bus_space_handle_t ioh = sc->sc_ioh;
@@ -952,8 +908,7 @@ nec86hw_stop_fifo(sc)
 }
 
 void
-nec86hw_enable_fifointr(sc)
-    struct nec86hw_softc *sc;
+nec86hw_enable_fifointr(struct nec86hw_softc *sc)
 {
     bus_space_tag_t iot = sc->sc_iot;
     bus_space_handle_t ioh = sc->sc_ioh;
@@ -965,8 +920,7 @@ nec86hw_enable_fifointr(sc)
 }
 
 void
-nec86hw_disable_fifointr(sc)
-    struct nec86hw_softc *sc;
+nec86hw_disable_fifointr(struct nec86hw_softc *sc)
 {
     bus_space_tag_t iot = sc->sc_iot;
     bus_space_handle_t ioh = sc->sc_ioh;
@@ -978,8 +932,7 @@ nec86hw_disable_fifointr(sc)
 }
 
 int
-nec86hw_seeif_intrflg(sc)
-    struct nec86hw_softc *sc;
+nec86hw_seeif_intrflg(struct nec86hw_softc *sc)
 {
     bus_space_tag_t iot = sc->sc_iot;
     bus_space_handle_t ioh = sc->sc_ioh;
@@ -991,8 +944,7 @@ nec86hw_seeif_intrflg(sc)
 }
 
 void
-nec86hw_clear_intrflg(sc)
-    struct nec86hw_softc *sc;
+nec86hw_clear_intrflg(struct nec86hw_softc *sc)
 {
     bus_space_tag_t iot = sc->sc_iot;
     bus_space_handle_t ioh = sc->sc_ioh;
@@ -1006,8 +958,7 @@ nec86hw_clear_intrflg(sc)
 }
 
 void
-nec86hw_reset_fifo(sc)
-    struct nec86hw_softc *sc;
+nec86hw_reset_fifo(struct nec86hw_softc *sc)
 {
     bus_space_tag_t iot = sc->sc_iot;
     bus_space_handle_t ioh = sc->sc_ioh;
@@ -1021,9 +972,7 @@ nec86hw_reset_fifo(sc)
 }
 
 void
-nec86hw_set_watermark(sc, wm)
-    struct nec86hw_softc *sc;
-    int wm;
+nec86hw_set_watermark(struct nec86hw_softc *sc, int wm)
 {
     bus_space_tag_t iot = sc->sc_iot;
     bus_space_handle_t ioh = sc->sc_ioh;
@@ -1046,9 +995,7 @@ nec86hw_set_watermark(sc, wm)
 }
 
 void
-nec86hw_set_precision_real(sc, prec)
-    struct nec86hw_softc *sc;
-    u_int prec;
+nec86hw_set_precision_real(struct nec86hw_softc *sc, u_int prec)
 {
     bus_space_tag_t iot = sc->sc_iot;
     bus_space_handle_t ioh = sc->sc_ioh;
@@ -1062,9 +1009,7 @@ nec86hw_set_precision_real(sc, prec)
 }
 
 void
-nec86hw_set_rate_real(sc, bits)
-    struct nec86hw_softc *sc;
-    u_int8_t bits;
+nec86hw_set_rate_real(struct nec86hw_softc *sc, u_int8_t bits)
 {
     bus_space_tag_t iot = sc->sc_iot;
     bus_space_handle_t ioh = sc->sc_ioh;
@@ -1080,8 +1025,7 @@ nec86hw_set_rate_real(sc, bits)
  * Write data to the FIFO ring buffer on the board.
  */
 void
-nec86hw_output_chunk(sc)
-    struct nec86hw_softc *sc;
+nec86hw_output_chunk(struct nec86hw_softc *sc)
 {
     int cc, nbyte;
 
@@ -1121,9 +1065,7 @@ nec86hw_output_chunk(sc)
  * Routines to write data directly.
  */
 int
-nec86fifo_output_mono_8_direct(sc, cc)
-    struct nec86hw_softc *sc;
-    int cc;
+nec86fifo_output_mono_8_direct(struct nec86hw_softc *sc, int cc)
 {
     bus_space_tag_t iot = sc->sc_iot;
     bus_space_handle_t ioh = sc->sc_ioh;
@@ -1144,9 +1086,7 @@ nec86fifo_output_mono_8_direct(sc, cc)
 }
 
 int
-nec86fifo_output_mono_16_direct(sc, cc)
-    struct nec86hw_softc *sc;
-    int cc;
+nec86fifo_output_mono_16_direct(struct nec86hw_softc *sc, int cc)
 {
     bus_space_tag_t iot = sc->sc_iot;
     bus_space_handle_t ioh = sc->sc_ioh;
@@ -1166,9 +1106,7 @@ nec86fifo_output_mono_16_direct(sc, cc)
 }
 
 int
-nec86fifo_output_stereo_8_direct(sc, cc)
-    struct nec86hw_softc *sc;
-    int cc;
+nec86fifo_output_stereo_8_direct(struct nec86hw_softc *sc, int cc)
 {
     bus_space_tag_t iot = sc->sc_iot;
     bus_space_handle_t ioh = sc->sc_ioh;
@@ -1184,9 +1122,7 @@ nec86fifo_output_stereo_8_direct(sc, cc)
 }
 
 int
-nec86fifo_output_stereo_16_direct(sc, cc)
-    struct nec86hw_softc *sc;
-    int cc;
+nec86fifo_output_stereo_16_direct(struct nec86hw_softc *sc, int cc)
 {
     bus_space_tag_t iot = sc->sc_iot;
     bus_space_handle_t ioh = sc->sc_ioh;
@@ -1209,9 +1145,7 @@ nec86fifo_output_stereo_16_direct(sc, cc)
  * Routines to write data with resampling. (linear interpolation)
  */
 int
-nec86fifo_output_mono_8_resamp(sc, cc)
-    struct nec86hw_softc *sc;
-    int cc;
+nec86fifo_output_mono_8_resamp(struct nec86hw_softc *sc, int cc)
 {
     bus_space_tag_t iot = sc->sc_iot;
     bus_space_handle_t ioh = sc->sc_ioh;
@@ -1258,9 +1192,7 @@ nec86fifo_output_mono_8_resamp(sc, cc)
 }
 
 int
-nec86fifo_output_mono_16_resamp(sc, cc)
-    struct nec86hw_softc *sc;
-    int cc;
+nec86fifo_output_mono_16_resamp(struct nec86hw_softc *sc, int cc)
 {
     bus_space_tag_t iot = sc->sc_iot;
     bus_space_handle_t ioh = sc->sc_ioh;
@@ -1310,9 +1242,7 @@ nec86fifo_output_mono_16_resamp(sc, cc)
 }
 
 int
-nec86fifo_output_stereo_8_resamp(sc, cc)
-    struct nec86hw_softc *sc;
-    int cc;
+nec86fifo_output_stereo_8_resamp(struct nec86hw_softc *sc, int cc)
 {
     bus_space_tag_t iot = sc->sc_iot;
     bus_space_handle_t ioh = sc->sc_ioh;
@@ -1368,9 +1298,7 @@ nec86fifo_output_stereo_8_resamp(sc, cc)
 }
 
 int
-nec86fifo_output_stereo_16_resamp(sc, cc)
-    struct nec86hw_softc *sc;
-    int cc;
+nec86fifo_output_stereo_16_resamp(struct nec86hw_softc *sc, int cc)
 {
     bus_space_tag_t iot = sc->sc_iot;
     bus_space_handle_t ioh = sc->sc_ioh;
@@ -1436,8 +1364,7 @@ nec86fifo_output_stereo_16_resamp(sc, cc)
  * Read data from the FIFO ring buffer on the board.
  */
 void
-nec86hw_input_chunk(sc)
-    struct nec86hw_softc *sc;
+nec86hw_input_chunk(struct nec86hw_softc *sc)
 {
     int cc, bpf;
 
@@ -1466,9 +1393,7 @@ nec86hw_input_chunk(sc)
  * Routines to read data directly.
  */
 void
-nec86fifo_input_mono_8_direct(sc, cc)
-    struct nec86hw_softc *sc;
-    int cc;
+nec86fifo_input_mono_8_direct(struct nec86hw_softc *sc, int cc)
 {
     bus_space_tag_t iot = sc->sc_iot;
     bus_space_handle_t ioh = sc->sc_ioh;
@@ -1486,9 +1411,7 @@ nec86fifo_input_mono_8_direct(sc, cc)
 }
 
 void
-nec86fifo_input_mono_16_direct(sc, cc)
-    struct nec86hw_softc *sc;
-    int cc;
+nec86fifo_input_mono_16_direct(struct nec86hw_softc *sc, int cc)
 {
     bus_space_tag_t iot = sc->sc_iot;
     bus_space_handle_t ioh = sc->sc_ioh;
@@ -1513,9 +1436,7 @@ nec86fifo_input_mono_16_direct(sc, cc)
 }
 
 void
-nec86fifo_input_stereo_8_direct(sc, cc)
-    struct nec86hw_softc *sc;
-    int cc;
+nec86fifo_input_stereo_8_direct(struct nec86hw_softc *sc, int cc)
 {
     bus_space_tag_t iot = sc->sc_iot;
     bus_space_handle_t ioh = sc->sc_ioh;
@@ -1529,9 +1450,7 @@ nec86fifo_input_stereo_8_direct(sc, cc)
 }
 
 void
-nec86fifo_input_stereo_16_direct(sc, cc)
-    struct nec86hw_softc *sc;
-    int cc;
+nec86fifo_input_stereo_16_direct(struct nec86hw_softc *sc, int cc)
 {
     bus_space_tag_t iot = sc->sc_iot;
     bus_space_handle_t ioh = sc->sc_ioh;
@@ -1552,9 +1471,7 @@ nec86fifo_input_stereo_16_direct(sc, cc)
  * Routines to read data with resampling. (linear interpolation)
  */
 void
-nec86fifo_input_mono_8_resamp(sc, cc)
-    struct nec86hw_softc *sc;
-    int cc;
+nec86fifo_input_mono_8_resamp(struct nec86hw_softc *sc, int cc)
 {
     bus_space_tag_t iot = sc->sc_iot;
     bus_space_handle_t ioh = sc->sc_ioh;
@@ -1593,9 +1510,7 @@ nec86fifo_input_mono_8_resamp(sc, cc)
 }
 
 void
-nec86fifo_input_mono_16_resamp(sc, cc)
-    struct nec86hw_softc *sc;
-    int cc;
+nec86fifo_input_mono_16_resamp(struct nec86hw_softc *sc, int cc)
 {
     bus_space_tag_t iot = sc->sc_iot;
     bus_space_handle_t ioh = sc->sc_ioh;
@@ -1641,9 +1556,7 @@ nec86fifo_input_mono_16_resamp(sc, cc)
 }
 
 void
-nec86fifo_input_stereo_8_resamp(sc, cc)
-    struct nec86hw_softc *sc;
-    int cc;
+nec86fifo_input_stereo_8_resamp(struct nec86hw_softc *sc, int cc)
 {
     bus_space_tag_t iot = sc->sc_iot;
     bus_space_handle_t ioh = sc->sc_ioh;
@@ -1687,9 +1600,7 @@ nec86fifo_input_stereo_8_resamp(sc, cc)
 }
 
 void
-nec86fifo_input_stereo_16_resamp(sc, cc)
-    struct nec86hw_softc *sc;
-    int cc;
+nec86fifo_input_stereo_16_resamp(struct nec86hw_softc *sc, int cc)
 {
     bus_space_tag_t iot = sc->sc_iot;
     bus_space_handle_t ioh = sc->sc_ioh;
@@ -1746,9 +1657,7 @@ nec86fifo_input_stereo_16_resamp(sc, cc)
  * Write padding zero's to the FIFO ring buffer on the board.
  */
 void
-nec86fifo_padding(sc, cc)
-    struct nec86hw_softc *sc;
-    int cc;
+nec86fifo_padding(struct nec86hw_softc *sc, int cc)
 {
     bus_space_tag_t iot = sc->sc_iot;
     bus_space_handle_t ioh = sc->sc_ioh;
@@ -1764,10 +1673,9 @@ nec86fifo_padding(sc, cc)
  * Interrupt handler.
  */
 int
-nec86hw_intr(arg)
-    void *arg;
+nec86hw_intr(void *arg)
 {
-    register struct nec86hw_softc *sc = (struct nec86hw_softc *) arg;
+    struct nec86hw_softc *sc = (struct nec86hw_softc *) arg;
 
     if (!nec86hw_seeif_intrflg(sc)) {
 	/* Seems to be an FM sound interrupt. */
@@ -1820,8 +1728,7 @@ nec86hw_intr(arg)
 }
 
 int
-nec86_get_props(addr)
-	void *addr;
+nec86_get_props(void *addr)
 {
 
 	return 0; 
