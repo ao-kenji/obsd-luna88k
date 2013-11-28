@@ -55,11 +55,19 @@
 int	nec86_match(struct device *, void *, void *);
 void	nec86_attach(struct device *, struct device *, void *);
 
+#if 0
 const struct cfattach nec86_ca = {
+#else
+const struct cfattach pcm_ca = {
+#endif
 	sizeof(struct nec86_softc), nec86_match, nec86_attach
 };
 
+#if 0
 const struct cfdriver nec86_cd = {
+#else
+const struct cfdriver pcm_cd = {
+#endif
 	NULL, "pcm", DV_DULL
 };
 
@@ -75,8 +83,11 @@ int
 nec86_match(struct device *parent, void *cf, void *aux)
 {
 	struct mainbus_attach_args *ma = aux;
-
+#if 0
 	if (strcmp(ma->ma_name, nec86_cd.cd_name))
+#else
+	if (strcmp(ma->ma_name, pcm_cd.cd_name))
+#endif
 		return 0;
 
 	return 1;
