@@ -67,10 +67,11 @@
 #include <luna88k/dev/nec86hwvar.h>
 #include <luna88k/dev/nec86var.h>
 
+#define AUDIO_DEBUG	/* XXX: for debug */
 #ifdef AUDIO_DEBUG
 extern void Dprintf(const char *, ...);
-#define DPRINTF(x)	if (nec86hwdebug) Dprintf x
-#define DPRINTF2(l, x)	if (nec86hwdebug >= l) Dprintf x
+#define DPRINTF(x)	if (nec86hwdebug) printf x
+#define DPRINTF2(l, x)	if (nec86hwdebug >= l) printf x
 int	nec86hwdebug = 0;
 #else	/* !AUDIO_DEBUG */
 #define DPRINTF(x)

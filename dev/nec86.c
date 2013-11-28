@@ -60,8 +60,9 @@
 #define NEC_SCR_SIDMASK		0xf0
 #define NEC_SCR_MASK		0x0f
 #define NEC_SCR_EXT_ENABLE	0x01
-
+#if 0
 extern struct cfdriver pcm_cd;
+#endif
 
 struct audio_device nec86_device = {
     "PC-9801-86",
