@@ -56,6 +56,7 @@
 
 #include "lcd.h"
 #include "siotty.h"
+#include "audio.h"
 
 #include "wsdisplay.h"
 #include "wskbd.h"
@@ -121,7 +122,7 @@ struct cdevsw	cdevsw[] =
 	cdev_bpf_init(NBPFILTER,bpf),	/* 22: berkeley packet filter */
 	cdev_tun_init(NTUN,tun),	/* 23: network tunnel */
 	cdev_lkm_init(NLKM,lkm),	/* 24: loadable module driver */
-	cdev_notdef(),			/* 25 */
+	cdev_audio_init(NAUDIO,audio),	/* 25: generic audio I/O */
 	cdev_notdef(),			/* 26 */
 	cdev_notdef(),			/* 27 */
 	cdev_notdef(),			/* 28 */
