@@ -1,3 +1,4 @@
+/*	$OpenBSD$	*/
 /*	$NecBSD: nec86.c,v 1.11 1999/07/23 11:04:39 honda Exp $	*/
 /*	$NetBSD$	*/
 
