@@ -1,3 +1,4 @@
+/*	$OpenBSD$	*/
 /*	$NecBSD: nec86reg.h,v 1.5 1998/03/14 07:04:56 kmatsuda Exp $	*/
 /*	$NetBSD$	*/
 

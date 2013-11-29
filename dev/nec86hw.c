@@ -1,5 +1,6 @@
 /*	$OpenBSD$	*/
 /*	$NecBSD: nec86hw.c,v 1.13 1998/03/14 07:04:54 kmatsuda Exp $	*/
+/*	$NetBSD$	*/
 
 /*
  * [NetBSD for NEC PC-98 series]
