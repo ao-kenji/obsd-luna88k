@@ -1,5 +1,6 @@
 /*	$OpenBSD$	*/
 /*	$NecBSD: nec86_isa.c,v 1.9 1998/09/26 11:31:11 kmatsuda Exp $	*/
+/*	$NetBSD$	*/
 
 /*
  * [NetBSD for NEC PC-98 series]
@@ -56,17 +57,17 @@ int	nec86_match(struct device *, void *, void *);
 void	nec86_attach(struct device *, struct device *, void *);
 
 #if 0
-const struct cfattach nec86_ca = {
+struct cfattach nec86_ca = {
 #else
-const struct cfattach pcm_ca = {
+struct cfattach pcm_ca = {
 #endif
 	sizeof(struct nec86_softc), nec86_match, nec86_attach
 };
 
 #if 0
-const struct cfdriver nec86_cd = {
+struct cfdriver nec86_cd = {
 #else
-const struct cfdriver pcm_cd = {
+struct cfdriver pcm_cd = {
 #endif
 	NULL, "pcm", DV_DULL
 };
@@ -103,8 +104,8 @@ nec86_attach(struct device *parent, struct device *self, void *aux)
 	bus_space_tag_t iot = &nec86_bst;
 	bus_space_handle_t coreh, n86h;
 
-	n86h  = (bus_space_handle_t)(0x91000000 + 0xa460);
-	coreh = (bus_space_handle_t)(0x91000000 + 0xa466);
+	n86h  = (bus_space_handle_t)(ma->ma_addr + 0xa460);
+	coreh = (bus_space_handle_t)(ma->ma_addr + 0xa466);
 
 #if 0
     if (bus_space_map(iot, ma->ma_addr, 1, 0, &n86h) ||
