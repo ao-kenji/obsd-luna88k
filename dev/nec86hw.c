@@ -1679,11 +1679,21 @@ nec86hw_intr(void *arg)
 {
     struct nec86hw_softc *sc = (struct nec86hw_softc *) arg;
 
+/*
+ * XXX: Need C-bus-on-luna88k specific interrupt handling
+ */
+
     if (!nec86hw_seeif_intrflg(sc)) {
 	/* Seems to be an FM sound interrupt. */
 	DPRINTF(("nec86hw_intr: ??? FM sound interrupt ???\n"));
 	return 0;
     }
+
+/* for debug */
+    printf("%s: 0x%x, pdma_mode: 0x%x\n", __func__, 
+	*(u_int16_t *)0x91100000, sc->pdma_mode);
+
+    mtx_enter(&audio_lock);
 
     nec86hw_clear_intrflg(sc);
 
@@ -1723,8 +1733,12 @@ nec86hw_intr(void *arg)
 
 	DPRINTF(("nec86hw_intr: ??? unexpected interrupt ???\n"));
 
+	mtx_leave(&audio_lock);
+
 	return 0;
     }
+
+    mtx_leave(&audio_lock);
 
     return 1;
 }
