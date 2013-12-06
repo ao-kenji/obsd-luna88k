@@ -43,8 +43,8 @@
 
 /* types of function which writes to/reads from FIFO buffer */
 struct nec86hw_softc;	/* dummy declaration */
-typedef int (*func_fifo_output_t) __P((struct nec86hw_softc *, int));
-typedef void (*func_fifo_input_t) __P((struct nec86hw_softc *, int));
+typedef int (*func_fifo_output_t) (struct nec86hw_softc *, int);
+typedef void (*func_fifo_input_t) (struct nec86hw_softc *, int);
 
 
 struct nec86hw_softc {
@@ -138,85 +138,85 @@ struct nec86hw_functable_entry {
  * Declarations of prototypes.
  */
 #ifdef _KERNEL
-void	nec86hw_attach __P((struct nec86hw_softc *));
+void	nec86hw_attach(struct nec86hw_softc *);
 
-int	nec86hw_open __P((void *, int));
-void	nec86hw_close __P((void *));
+int	nec86hw_open(void *, int);
+void	nec86hw_close(void *);
 
-int	nec86hw_set_params __P((void *, int, int, struct audio_params *, struct audio_params *));
-int	nec86hw_query_encoding __P((void *, struct audio_encoding *));
+int	nec86hw_set_params(void *, int, int, struct audio_params *, struct audio_params *);
+int	nec86hw_query_encoding(void *, struct audio_encoding *);
 
-int	nec86hw_round_blocksize __P((void *, int));
+int	nec86hw_round_blocksize(void *, int);
 
-int	nec86hw_set_out_port __P((void *, int));
-int	nec86hw_get_out_port __P((void *));
-int	nec86hw_set_in_port __P((void *, int));
-int	nec86hw_get_in_port __P((void *));
+int	nec86hw_set_out_port(void *, int);
+int	nec86hw_get_out_port(void *);
+int	nec86hw_set_in_port(void *, int);
+int	nec86hw_get_in_port(void *);
 
-int	nec86hw_commit_settings __P((void *));
+int	nec86hw_commit_settings(void *);
 
-int	nec86hw_setfd __P((void *, int));
+int	nec86hw_setfd(void *, int);
 
-int	nec86hw_mixer_set_port __P((void *, mixer_ctrl_t *));
-int	nec86hw_mixer_get_port __P((void *, mixer_ctrl_t *));
-int	nec86hw_mixer_query_devinfo __P((void *, mixer_devinfo_t *));
+int	nec86hw_mixer_set_port(void *, mixer_ctrl_t *);
+int	nec86hw_mixer_get_port(void *, mixer_ctrl_t *);
+int	nec86hw_mixer_query_devinfo(void *, mixer_devinfo_t *);
 
-int	nec86hw_pdma_init_output __P((void *, void *, int));
-int	nec86hw_pdma_init_input __P((void *, void *, int));
-int	nec86hw_pdma_output __P((void *, void *, int, void (*)__P((void *)), void *));
-int	nec86hw_pdma_input __P((void *, void *, int, void (*) __P((void *)), void *));
+int	nec86hw_pdma_init_output(void *, void *, int);
+int	nec86hw_pdma_init_input(void *, void *, int);
+int	nec86hw_pdma_output(void *, void *, int, void (*)(void *), void *);
+int	nec86hw_pdma_input(void *, void *, int, void (*)(void *), void *));
 
-int	nec86hw_speaker_ctl __P((void *, int));
+int	nec86hw_speaker_ctl(void *, int);
 
-int	nec86hw_halt_pdma __P((void *));
-int	nec86hw_cont_pdma __P((void *));
+int	nec86hw_halt_pdma(void *);
+int	nec86hw_cont_pdma(void *);
 
-u_char	nec86hw_rate_bits __P((struct nec86hw_softc *, u_long));
-int	nec86hw_round_watermark __P((int));
+u_char	nec86hw_rate_bits(struct nec86hw_softc *, u_long);
+int	nec86hw_round_watermark(int);
 
-int	nec86hw_reset __P((struct nec86hw_softc *));
-void	nec86hw_set_mode_playing __P((struct nec86hw_softc *));
-void	nec86hw_set_mode_recording __P((struct nec86hw_softc *));
+int	nec86hw_reset(struct nec86hw_softc *);
+void	nec86hw_set_mode_playing(struct nec86hw_softc *);
+void	nec86hw_set_mode_recording(struct nec86hw_softc *);
 
-void	nec86hw_set_volume __P((struct nec86hw_softc *, int, u_char));
+void	nec86hw_set_volume(struct nec86hw_softc *, int, u_char);
 
-void	nec86hw_start_fifo __P((struct nec86hw_softc *));
-void	nec86hw_stop_fifo __P((struct nec86hw_softc *));
-void	nec86hw_enable_fifointr __P((struct nec86hw_softc *));
-void	nec86hw_disable_fifointr __P((struct nec86hw_softc *));
-int	nec86hw_seeif_intrflg __P((struct nec86hw_softc *));
-void	nec86hw_clear_intrflg __P((struct nec86hw_softc *));
-void	nec86hw_reset_fifo __P((struct nec86hw_softc *));
-void	nec86hw_set_watermark __P((struct nec86hw_softc *, int));
-void	nec86hw_set_precision_real __P((struct nec86hw_softc *, u_int));
-void	nec86hw_set_rate_real __P((struct nec86hw_softc *, u_char));
+void	nec86hw_start_fifo(struct nec86hw_softc *);
+void	nec86hw_stop_fifo(struct nec86hw_softc *);
+void	nec86hw_enable_fifointr(struct nec86hw_softc *);
+void	nec86hw_disable_fifointr(struct nec86hw_softc *);
+int	nec86hw_seeif_intrflg(struct nec86hw_softc *);
+void	nec86hw_clear_intrflg(struct nec86hw_softc *);
+void	nec86hw_reset_fifo(struct nec86hw_softc *);
+void	nec86hw_set_watermark(struct nec86hw_softc *, int);
+void	nec86hw_set_precision_real(struct nec86hw_softc *, u_int);
+void	nec86hw_set_rate_real(struct nec86hw_softc *, u_char);
 
-void	nec86hw_output_chunk __P((struct nec86hw_softc *));
-void	nec86hw_input_chunk __P((struct nec86hw_softc *));
+void	nec86hw_output_chunk(struct nec86hw_softc *);
+void	nec86hw_input_chunk(struct nec86hw_softc *);
 
-int	nec86fifo_output_mono_8_direct __P((struct nec86hw_softc *, int));
-int	nec86fifo_output_mono_16_direct __P((struct nec86hw_softc *, int));
-int	nec86fifo_output_stereo_8_direct __P((struct nec86hw_softc *, int));
-int	nec86fifo_output_stereo_16_direct __P((struct nec86hw_softc *, int));
-int	nec86fifo_output_mono_8_resamp __P((struct nec86hw_softc *, int));
-int	nec86fifo_output_mono_16_resamp __P((struct nec86hw_softc *, int));
-int	nec86fifo_output_stereo_8_resamp __P((struct nec86hw_softc *, int));
-int	nec86fifo_output_stereo_16_resamp __P((struct nec86hw_softc *, int));
-void	nec86fifo_input_mono_8_direct __P((struct nec86hw_softc *, int));
-void	nec86fifo_input_mono_16_direct __P((struct nec86hw_softc *, int));
-void	nec86fifo_input_stereo_8_direct __P((struct nec86hw_softc *, int));
-void	nec86fifo_input_stereo_16_direct __P((struct nec86hw_softc *, int));
-void	nec86fifo_input_mono_8_resamp __P((struct nec86hw_softc *, int));
-void	nec86fifo_input_mono_16_resamp __P((struct nec86hw_softc *, int));
-void	nec86fifo_input_stereo_8_resamp __P((struct nec86hw_softc *, int));
-void	nec86fifo_input_stereo_16_resamp __P((struct nec86hw_softc *, int));
+int	nec86fifo_output_mono_8_direct(struct nec86hw_softc *, int);
+int	nec86fifo_output_mono_16_direct(struct nec86hw_softc *, int);
+int	nec86fifo_output_stereo_8_direct(struct nec86hw_softc *, int);
+int	nec86fifo_output_stereo_16_direct(struct nec86hw_softc *, int);
+int	nec86fifo_output_mono_8_resamp(struct nec86hw_softc *, int);
+int	nec86fifo_output_mono_16_resamp(struct nec86hw_softc *, int);
+int	nec86fifo_output_stereo_8_resamp(struct nec86hw_softc *, int);
+int	nec86fifo_output_stereo_16_resamp(struct nec86hw_softc *, int);
+void	nec86fifo_input_mono_8_direct(struct nec86hw_softc *, int);
+void	nec86fifo_input_mono_16_direct(struct nec86hw_softc *, int);
+void	nec86fifo_input_stereo_8_direct(struct nec86hw_softc *, int);
+void	nec86fifo_input_stereo_16_direct(struct nec86hw_softc *, int);
+void	nec86fifo_input_mono_8_resamp(struct nec86hw_softc *, int);
+void	nec86fifo_input_mono_16_resamp(struct nec86hw_softc *, int);
+void	nec86fifo_input_stereo_8_resamp(struct nec86hw_softc *, int);
+void	nec86fifo_input_stereo_16_resamp(struct nec86hw_softc *, int);
 
-void	nec86fifo_padding __P((struct nec86hw_softc *, int));
+void	nec86fifo_padding(struct nec86hw_softc *, int);
 
-int	nec86hw_intr __P((void *));
+int	nec86hw_intr(void *);
 
-int	nec86getdev __P((void *, struct audio_device *));
-int 	nec86_get_props __P((void *));
+int	nec86getdev(void *, struct audio_device *);
+int 	nec86_get_props(void *);
 
 #endif	/* _KERNEL */
 #endif	/* !_NEC86HWVAR_H_ */
