@@ -164,7 +164,7 @@ int	nec86hw_mixer_query_devinfo(void *, mixer_devinfo_t *);
 int	nec86hw_pdma_init_output(void *, void *, int);
 int	nec86hw_pdma_init_input(void *, void *, int);
 int	nec86hw_pdma_output(void *, void *, int, void (*)(void *), void *);
-int	nec86hw_pdma_input(void *, void *, int, void (*)(void *), void *));
+int	nec86hw_pdma_input(void *, void *, int, void (*)(void *), void *);
 
 int	nec86hw_speaker_ctl(void *, int);
 
