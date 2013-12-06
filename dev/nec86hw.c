@@ -73,7 +73,7 @@
 extern void Dprintf(const char *, ...);
 #define DPRINTF(x)	if (nec86hwdebug) printf x
 #define DPRINTF2(l, x)	if (nec86hwdebug >= l) printf x
-int	nec86hwdebug = 0;
+int	nec86hwdebug = 3;
 #else	/* !AUDIO_DEBUG */
 #define DPRINTF(x)
 #define DPRINTF2(l, x)
@@ -305,48 +305,64 @@ nec86hw_query_encoding(void *addr, struct audio_encoding *fp)
 	strlcpy(fp->name, AudioEmulaw, sizeof(fp->name));
 	fp->encoding = AUDIO_ENCODING_ULAW;
 	fp->precision = 8;
+	fp->bps = 1;
+	fp->msb = 1;
 	fp->flags = AUDIO_ENCODINGFLAG_EMULATED;
 	break;
     case 1:
 	strlcpy(fp->name, AudioEalaw, sizeof(fp->name));
 	fp->encoding = AUDIO_ENCODING_ALAW;
 	fp->precision = 8;
+	fp->bps = 1;
+	fp->msb = 1;
 	fp->flags = AUDIO_ENCODINGFLAG_EMULATED;
 	break;
     case 2:
 	strlcpy(fp->name, AudioEulinear, sizeof(fp->name));
 	fp->encoding = AUDIO_ENCODING_ULINEAR;
 	fp->precision = 8;
+	fp->bps = 1;
+	fp->msb = 1;
 	fp->flags = 0;
 	break;
     case 3:
 	strlcpy(fp->name, AudioEslinear, sizeof(fp->name));
 	fp->encoding = AUDIO_ENCODING_SLINEAR;
 	fp->precision = 8;
+	fp->bps = 1;
+	fp->msb = 1;
 	fp->flags = AUDIO_ENCODINGFLAG_EMULATED;
 	break;
     case 4:
 	strlcpy(fp->name, AudioEulinear_le, sizeof(fp->name));
 	fp->encoding = AUDIO_ENCODING_ULINEAR_LE;
 	fp->precision = 16;
+	fp->bps = 2;
+	fp->msb = 1;	/* is this OK? */
 	fp->flags = AUDIO_ENCODINGFLAG_EMULATED;
 	break;
     case 5:
 	strlcpy(fp->name, AudioEulinear_be, sizeof(fp->name));
 	fp->encoding = AUDIO_ENCODING_ULINEAR_BE;
 	fp->precision = 16;
+	fp->bps = 2;
+	fp->msb = 1;	/* is this OK? */
 	fp->flags = AUDIO_ENCODINGFLAG_EMULATED;
 	break;
     case 6:
 	strlcpy(fp->name, AudioEslinear_le, sizeof(fp->name));
 	fp->encoding = AUDIO_ENCODING_SLINEAR_LE;
 	fp->precision = 16;
+	fp->bps = 2;
+	fp->msb = 1;	/* is this OK? */
 	fp->flags = 0;
 	break;
     case 7:
 	strlcpy(fp->name, AudioEslinear_be, sizeof(fp->name));
 	fp->encoding = AUDIO_ENCODING_SLINEAR_BE;
 	fp->precision = 16;
+	fp->bps = 2;
+	fp->msb = 1;	/* is this OK? */
 	fp->flags = AUDIO_ENCODINGFLAG_EMULATED;
 	break;
     default:
@@ -1165,6 +1181,8 @@ nec86fifo_output_mono_8_resamp(struct nec86hw_softc *sc, int cc)
     acc = sc->conv_acc;
     d0 = (u_int8_t) sc->conv_last0;
     d1 = (u_int8_t) sc->conv_last1;
+
+DPRINTF(("%s: orate=%d, hw_orate=%d\n", __func__, orate, hw_orate));
     
     for (i = 0; i < cc; i++) {
 	d0 = d1;
@@ -1685,7 +1703,9 @@ nec86hw_intr(void *arg)
 
     if (!nec86hw_seeif_intrflg(sc)) {
 	/* Seems to be an FM sound interrupt. */
+#if 0
 	DPRINTF(("nec86hw_intr: ??? FM sound interrupt ???\n"));
+#endif
 	return 0;
     }
 
