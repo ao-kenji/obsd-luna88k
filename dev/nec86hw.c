@@ -1182,8 +1182,6 @@ nec86fifo_output_mono_8_resamp(struct nec86hw_softc *sc, int cc)
     d0 = (u_int8_t) sc->conv_last0;
     d1 = (u_int8_t) sc->conv_last1;
 
-DPRINTF(("%s: orate=%d, hw_orate=%d\n", __func__, orate, hw_orate));
-    
     for (i = 0; i < cc; i++) {
 	d0 = d1;
 	d1 = *p++;
@@ -1700,6 +1698,7 @@ nec86hw_intr(void *arg)
 /*
  * XXX: Need C-bus-on-luna88k specific interrupt handling
  */
+    u_int8_t intreg;
 
     if (!nec86hw_seeif_intrflg(sc)) {
 	/* Seems to be an FM sound interrupt. */
@@ -1709,9 +1708,13 @@ nec86hw_intr(void *arg)
 	return 0;
     }
 
+    intreg = *(u_int8_t*)0x91100000;
+    
 /* for debug */
-    printf("%s: 0x%x, pdma_mode: 0x%x\n", __func__, 
-	*(u_int16_t *)0x91100000, sc->pdma_mode);
+    printf("%s: 0x%x, pdma_mode: 0x%x\n", __func__, intreg, sc->pdma_mode);
+
+    if ((intreg & 0x02) != 0)		/* If it is not INT5, return */
+	return 0;
 
     mtx_enter(&audio_lock);
 
@@ -1759,6 +1762,9 @@ nec86hw_intr(void *arg)
     }
 
     mtx_leave(&audio_lock);
+
+    /* clear INT5 interrupt (!?) */
+    *(u_int8_t *)0x91100000 = 1;	/* Now we use INT5, then write 1 */
 
     return 1;
 }
