@@ -906,6 +906,8 @@ nec86hw_start_fifo(struct nec86hw_softc *sc)
     bus_space_handle_t ioh = sc->sc_ioh;
     u_int8_t data;
 
+DPRINTF(("%s\n", __func__));
+
     /* Start playing/recording. */
     data = bus_space_read_1(iot, ioh, NEC86_FIFOCTL);
     data |= NEC86_FIFOCTL_RUN;
@@ -918,6 +920,8 @@ nec86hw_stop_fifo(struct nec86hw_softc *sc)
     bus_space_tag_t iot = sc->sc_iot;
     bus_space_handle_t ioh = sc->sc_ioh;
     u_int8_t data;
+
+DPRINTF(("%s\n", __func__));
 
     /* Stop playing/recording. */
     data = bus_space_read_1(iot, ioh, NEC86_FIFOCTL);
@@ -932,6 +936,8 @@ nec86hw_enable_fifointr(struct nec86hw_softc *sc)
     bus_space_handle_t ioh = sc->sc_ioh;
     u_int8_t data;
 
+DPRINTF(("%s\n", __func__));
+
     data = bus_space_read_1(iot, ioh, NEC86_FIFOCTL);
     data |= NEC86_FIFOCTL_ENBLINTR;
     bus_space_write_1(iot, ioh, NEC86_FIFOCTL, data);
@@ -943,6 +949,8 @@ nec86hw_disable_fifointr(struct nec86hw_softc *sc)
     bus_space_tag_t iot = sc->sc_iot;
     bus_space_handle_t ioh = sc->sc_ioh;
     u_int8_t data;
+
+DPRINTF(("%s\n", __func__));
 
     data = bus_space_read_1(iot, ioh, NEC86_FIFOCTL);
     data &= ~NEC86_FIFOCTL_ENBLINTR;
@@ -956,6 +964,8 @@ nec86hw_seeif_intrflg(struct nec86hw_softc *sc)
     bus_space_handle_t ioh = sc->sc_ioh;
     u_int8_t data;
 
+DPRINTF(("%s\n", __func__));
+
     data = bus_space_read_1(iot, ioh, NEC86_FIFOCTL);
 
     return (data & NEC86_FIFOCTL_INTRFLG);
@@ -967,6 +977,8 @@ nec86hw_clear_intrflg(struct nec86hw_softc *sc)
     bus_space_tag_t iot = sc->sc_iot;
     bus_space_handle_t ioh = sc->sc_ioh;
     u_int8_t data;
+
+DPRINTF(("%s\n", __func__));
 
     data = bus_space_read_1(iot, ioh, NEC86_FIFOCTL);
     data &= ~NEC86_FIFOCTL_INTRFLG;
@@ -981,6 +993,8 @@ nec86hw_reset_fifo(struct nec86hw_softc *sc)
     bus_space_tag_t iot = sc->sc_iot;
     bus_space_handle_t ioh = sc->sc_ioh;
     u_int8_t data;
+
+DPRINTF(("%s\n", __func__));
 
     data = bus_space_read_1(iot, ioh, NEC86_FIFOCTL);
     data |= NEC86_FIFOCTL_INIT;
@@ -1004,6 +1018,8 @@ nec86hw_set_watermark(struct nec86hw_softc *sc, int wm)
 	|| ((wm % NEC86_INTRBLK_UNIT) != 0))
 	printf("nec86hw_set_watermark: invalid watermark %d\n", wm);
 #endif	/* DIAGNOSTIC */
+
+DPRINTF(("%s: wm=%d, set %d\n", __func__, wm, wm / NEC86_INTRBLK_UNIT - 1));
 
     /*
      * The interrupt occurs when the number of bytes in the FIFO ring buffer
@@ -1091,14 +1107,20 @@ nec86fifo_output_mono_8_direct(struct nec86hw_softc *sc, int cc)
     int i;
     register u_int8_t d;
 
+DPRINTF(("m8d: sc->pdma_ptr=0x%x, cc=%d\n", sc->pdma_ptr, cc));
+
     for (i = 0; i < cc; i++) {
 	d = *p++;
 	d ^= 0x80;	/* unsigned -> signed */
+
+DPRINTF((",%d", (int)d));
 
 	/* Fake monoral playing by duplicating a sample. */
 	bus_space_write_1(iot, ioh, NEC86_FIFODATA, d);
 	bus_space_write_1(iot, ioh, NEC86_FIFODATA, d);
     }
+
+DPRINTF(("\n"));
 
     return cc * 2;
 }
@@ -1111,12 +1133,21 @@ nec86fifo_output_mono_16_direct(struct nec86hw_softc *sc, int cc)
     u_int8_t *p = sc->pdma_ptr;
     int i;
 
+DPRINTF(("m16d: sc->pdma_ptr=0x%x, cc=%d\n", sc->pdma_ptr, cc));
+
     for (i = 0; i < cc; i++) {
 	/* Fake monoral playing by duplicating a sample. */
-	bus_space_write_1(iot, ioh, NEC86_FIFODATA, *(p + 1));	/* little endian -> big endian */
+#if BYTE_ORDER == BIG_ENDIAN
 	bus_space_write_1(iot, ioh, NEC86_FIFODATA, *p);
 	bus_space_write_1(iot, ioh, NEC86_FIFODATA, *(p + 1));
 	bus_space_write_1(iot, ioh, NEC86_FIFODATA, *p);
+	bus_space_write_1(iot, ioh, NEC86_FIFODATA, *(p + 1));
+#else	/* little endian -> big endian */
+	bus_space_write_1(iot, ioh, NEC86_FIFODATA, *(p + 1));
+	bus_space_write_1(iot, ioh, NEC86_FIFODATA, *p);
+	bus_space_write_1(iot, ioh, NEC86_FIFODATA, *(p + 1));
+	bus_space_write_1(iot, ioh, NEC86_FIFODATA, *p);
+#endif
 	p += 2;
     }
 
@@ -1130,6 +1161,8 @@ nec86fifo_output_stereo_8_direct(struct nec86hw_softc *sc, int cc)
     bus_space_handle_t ioh = sc->sc_ioh;
     u_int8_t *p = sc->pdma_ptr;
     int i;
+
+DPRINTF(("s8d: sc->pdma_ptr=0x%x, cc=%d\n", sc->pdma_ptr, cc));
 
     for (i = 0; i < cc; i++) {
 	bus_space_write_1(iot, ioh, NEC86_FIFODATA, (*p++) ^ 0x80);	/* unsigned -> signed (L) */
@@ -1147,13 +1180,24 @@ nec86fifo_output_stereo_16_direct(struct nec86hw_softc *sc, int cc)
     u_int8_t *p = sc->pdma_ptr;
     int i;
 
+DPRINTF(("s16d: sc->pdma_ptr=0x%x, cc=%d\n", sc->pdma_ptr, cc));
+
     for (i = 0; i < cc; i++) {
-	bus_space_write_1(iot, ioh, NEC86_FIFODATA, *(p + 1));	/* little endian -> big endian (L) */
+#if BYTE_ORDER == BIG_ENDIAN
+	bus_space_write_1(iot, ioh, NEC86_FIFODATA, *p);	/* (L) */
+	bus_space_write_1(iot, ioh, NEC86_FIFODATA, *(p + 1));
+	p += 2;
+	bus_space_write_1(iot, ioh, NEC86_FIFODATA, *p);	/* (R) */
+	bus_space_write_1(iot, ioh, NEC86_FIFODATA, *(p + 1));
+	p += 2;
+#else	/* little endian -> big endian */
+	bus_space_write_1(iot, ioh, NEC86_FIFODATA, *(p + 1));	/* (L) */
 	bus_space_write_1(iot, ioh, NEC86_FIFODATA, *p);
 	p += 2;
-	bus_space_write_1(iot, ioh, NEC86_FIFODATA, *(p + 1));	/* little endian -> big endian (R) */
+	bus_space_write_1(iot, ioh, NEC86_FIFODATA, *(p + 1));	/* (R) */
 	bus_space_write_1(iot, ioh, NEC86_FIFODATA, *p);
 	p += 2;
+#endif
     }
 
     return cc * 4;
@@ -1173,6 +1217,8 @@ nec86fifo_output_mono_8_resamp(struct nec86hw_softc *sc, int cc)
     register u_int8_t d;
     register u_int8_t d0, d1;
     register u_long acc, orate, hw_orate;
+
+DPRINTF(("m8r: sc->pdma_ptr=0x%x, cc=%d\n", sc->pdma_ptr, cc));
 
     rval = 0;
 
@@ -1219,6 +1265,8 @@ nec86fifo_output_mono_16_resamp(struct nec86hw_softc *sc, int cc)
     register int rval;
     register u_short d, d0, d1;
     register u_long acc, orate, hw_orate;
+
+DPRINTF(("m16r: sc->pdma_ptr=0x%x, cc=%d\n", sc->pdma_ptr, cc));
 
     rval = 0;
 
@@ -1269,6 +1317,8 @@ nec86fifo_output_stereo_8_resamp(struct nec86hw_softc *sc, int cc)
     register int rval;
     register u_int8_t d, d0_l, d0_r, d1_l, d1_r;
     register u_long acc, orate, hw_orate;
+
+DPRINTF(("s8r: sc->pdma_ptr=0x%x, cc=%d\n", sc->pdma_ptr, cc));
 
     rval = 0;
 
@@ -1326,6 +1376,8 @@ nec86fifo_output_stereo_16_resamp(struct nec86hw_softc *sc, int cc)
     register u_short d, d0_l, d0_r, d1_l, d1_r;
     register u_long acc, orate, hw_orate;
     
+DPRINTF(("s16r: sc->pdma_ptr=0x%x, cc=%d\n", sc->pdma_ptr, cc));
+
     rval = 0;
 
     orate = sc->sc_orate;
@@ -1448,8 +1500,13 @@ nec86fifo_input_mono_16_direct(struct nec86hw_softc *sc, int cc)
 	/* Fake monoral recording by taking arithmetical mean. */
 	d = (d_l + d_r) / 2;
 
+#if BYTE_ORDER == BIG_ENDIAN
+	*p++ = ((d >> 8) & 0xff) ^ 0x80;	/* -> big endian signed */
+	*p++ = d & 0xff;
+#else
 	*p++ = d & 0xff;	/* -> little endian signed */
 	*p++ = ((d >> 8) & 0xff) ^ 0x80;
+#endif
     }
 }
 
@@ -1476,12 +1533,21 @@ nec86fifo_input_stereo_16_direct(struct nec86hw_softc *sc, int cc)
     int i;
 
     for (i = 0; i < cc; i++) {
-	*(p + 1) = bus_space_read_1(iot, ioh, NEC86_FIFODATA);	/* big endian -> little endian (L) */
+#if BYTE_ORDER == BIG_ENDIAN
+	*p = bus_space_read_1(iot, ioh, NEC86_FIFODATA);	/* (L) */
+	*(p + 1) = bus_space_read_1(iot, ioh, NEC86_FIFODATA);
+	p += 2;
+	*p = bus_space_read_1(iot, ioh, NEC86_FIFODATA);	/* (R) */
+	*(p + 1) = bus_space_read_1(iot, ioh, NEC86_FIFODATA);
+	p += 2;
+#else	/* big endian -> little endian */
+	*(p + 1) = bus_space_read_1(iot, ioh, NEC86_FIFODATA);	/* (L) */
 	*p = bus_space_read_1(iot, ioh, NEC86_FIFODATA);
 	p += 2;
-	*(p + 1) = bus_space_read_1(iot, ioh, NEC86_FIFODATA);	/* big endian -> little endian (R) */
+	*(p + 1) = bus_space_read_1(iot, ioh, NEC86_FIFODATA);	/* (R) */
 	*p = bus_space_read_1(iot, ioh, NEC86_FIFODATA);
 	p += 2;
+#endif
     }
 }
 
@@ -1562,8 +1628,13 @@ nec86fifo_input_mono_16_resamp(struct nec86hw_softc *sc, int cc)
 	/* Linear interpolation. */
 	d = ((d0 * (irate - acc)) + (d1 * acc)) / irate;
 
-	*p++ = d & 0xff;	/* -> little endian signed */
+#if BYTE_ORDER == BIG_ENDIAN
+	*p++ = ((d >> 8) & 0xff) ^ 0x80;	/* -> big endian signed */
+	*p++ = d & 0xff;
+#else
+	*p++ = d & 0xff;			/* -> little endian signed */
 	*p++ = ((d >> 8) & 0xff) ^ 0x80;
+#endif
 
 	acc += hw_irate;
     }
@@ -1652,14 +1723,24 @@ nec86fifo_input_stereo_16_resamp(struct nec86hw_softc *sc, int cc)
 	/* Linear interpolation. (L) */
 	d = ((d0_l * (irate - acc)) + (d1_l * acc)) / irate;
 
-	*p++ = d & 0xff;	/* -> little endian signed (L) */
+#if BYTE_ORDER == BIG_ENDIAN
+	*p++ = ((d >> 8) & 0xff) ^ 0x80;	/* -> big endian signed (L) */
+	*p++ = d & 0xff;
+#else
+	*p++ = d & 0xff;		/* -> little endian signed (L) */
 	*p++ = ((d >> 8) & 0xff) ^ 0x80;
+#endif
 
 	/* Linear interpolation. (R) */
 	d = ((d0_r * (irate - acc)) + (d1_r * acc)) / irate;
 
-	*p++ = d & 0xff;	/* -> little endian signed (R) */
+#if BYTE_ORDER == BIG_ENDIAN
+	*p++ = ((d >> 8) & 0xff) ^ 0x80;	/* -> big endian signed (R) */
+	*p++ = d & 0xff;
+#else
+	*p++ = d & 0xff;		/* -> little endian signed (R) */
 	*p++ = ((d >> 8) & 0xff) ^ 0x80;
+#endif
 
 	acc += hw_irate;
     }
@@ -1690,31 +1771,31 @@ nec86fifo_padding(struct nec86hw_softc *sc, int cc)
 /*
  * Interrupt handler.
  */
+
+/*
+ * C-bus Interrupt Status Register
+ */
+volatile u_int8_t *cisr = (u_int8_t *)0x91100000;
+
 int
 nec86hw_intr(void *arg)
 {
     struct nec86hw_softc *sc = (struct nec86hw_softc *) arg;
 
 /*
- * XXX: Need C-bus-on-luna88k specific interrupt handling
+ * XXX: C-bus-on-luna88k specific interrupt handling
  */
-    u_int8_t intreg;
+    if ((*cisr & 0x02) != 0)		/* If it is not INT5, return */
+	return 0;
 
     if (!nec86hw_seeif_intrflg(sc)) {
 	/* Seems to be an FM sound interrupt. */
-#if 0
 	DPRINTF(("nec86hw_intr: ??? FM sound interrupt ???\n"));
-#endif
 	return 0;
     }
 
-    intreg = *(u_int8_t*)0x91100000;
-    
 /* for debug */
-    printf("%s: 0x%x, pdma_mode: 0x%x\n", __func__, intreg, sc->pdma_mode);
-
-    if ((intreg & 0x02) != 0)		/* If it is not INT5, return */
-	return 0;
+    printf("%s: 0x%x, pdma_mode: 0x%x\n", __func__, *cisr, sc->pdma_mode);
 
     mtx_enter(&audio_lock);
 
@@ -1764,7 +1845,7 @@ nec86hw_intr(void *arg)
     mtx_leave(&audio_lock);
 
     /* clear INT5 interrupt (!?) */
-    *(u_int8_t *)0x91100000 = 1;	/* Now we use INT5, then write 1 */
+    *cisr = 1;	/* Now we use INT5, then write 1 */
 
     return 1;
 }
