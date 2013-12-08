@@ -102,10 +102,6 @@ struct audio_hw_if nec86_hw_if = {
     nec86_get_props,
     NULL,			/* trigger_output */
     NULL,			/* trigger_input */
-#if 0
-    NULL,			/* dev_ioctl */
-    NULL,			/* get_locks */
-#endif
     NULL			/* get_default_params */
 };
 
