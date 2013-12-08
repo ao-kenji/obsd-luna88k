@@ -131,18 +131,3 @@ nec86_attach(struct device *parent, struct device *self, void *aux)
 	isrlink_autovec(nec86hw_intr, ysc, ma->ma_ilvl, ISRPRI_NET,
 		self->dv_xname);
 }
-
-#if 0
-static int
-nec86_systmmsg(dv, ev)
-	struct device *dv;
-	systm_event_t ev;
-{
-    struct nec86_softc *nsc = (struct nec86_softc *) dv;
-
-    if (ev == SYSTM_EVENT_RESUME)
-        nec86_attachsubr(nsc);
-
-    return 0;
-}
-#endif
