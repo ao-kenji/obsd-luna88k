@@ -640,12 +640,6 @@ nec86hw_pdma_init_input(void *addr, void *buf, int cc)
 int
 nec86hw_pdma_output(void *addr, void *p, int cc, void (*intr)(void *),
 		void *arg)
-#if 0
-    void *addr, *p;
-    int cc;
-    void (*intr) __P((void *));
-    void *arg;
-#endif
 {
     struct nec86hw_softc *sc = (struct nec86hw_softc *) addr;
     int bpf;
@@ -701,12 +695,6 @@ nec86hw_pdma_output(void *addr, void *p, int cc, void (*intr)(void *),
 
 int
 nec86hw_pdma_input(void *addr, void *p, int cc, void (*intr)(void *), void *arg)
-#if 0
-    void *addr, *p;
-    int cc;
-    void (*intr) __P((void *));
-    void *arg;
-#endif
 {
     struct nec86hw_softc *sc = (struct nec86hw_softc *) addr;
     int bpf;
