@@ -56,6 +56,7 @@ int	om_copycols(void *, int, int, int, int);
 int	om_copyrows(void *, int, int, int num);
 int	om_erasecols(void *, int, int, int, long);
 int	om_eraserows(void *, int, int, long);
+int	om_allocattr(void *, int, int, int, long *);
 
 /* internal functions (for 1bpp, in omrasops1.c) */
 int	om_windowmove1(struct rasops_info *, u_int16_t, u_int16_t,
@@ -77,7 +78,7 @@ om_putchar(void *cookie, int row, int startcol, u_int uc, long attr)
 	struct rasops_info *ri = cookie;
 	u_int8_t *p;
 	int scanspan, startx, height, width, align, y;
-	u_int32_t lmask, rmask, glyph, inverse;
+	u_int32_t lmask, rmask, glyph, glyphbg, inverse, fgpat, bgpat;
 	int i, fg, bg;
 	u_int8_t *fb;
 
@@ -102,27 +103,80 @@ om_putchar(void *cookie, int row, int startcol, u_int uc, long attr)
 			for (i = ri->ri_font->stride; i != 0; i--)
 				glyph = (glyph << 8) | *fb++;
 			glyph <<= (4 - ri->ri_font->stride) * NBBY;
+#if 0
 			glyph = (glyph >> align) ^ inverse;
 			W(p) = (R(p) & ~lmask) | (glyph & lmask);
+#else
+			glyph = (glyph >> align);
+			glyphbg = glyph ^ ALL1BITS;
+
+			fgpat = (fg & 0x04) ? glyph : 0;
+			bgpat = (bg & 0x04) ? glyphbg : 0;
+			P0(p) = (P0(p) & ~lmask) | ((fgpat | bgpat) & lmask);
+			fgpat = (fg & 0x02) ? glyph : 0;
+			bgpat = (bg & 0x02) ? glyphbg : 0;
+			P1(p) = (P1(p) & ~lmask) | ((fgpat | bgpat) & lmask);
+			fgpat = (fg & 0x01) ? glyph : 0;
+			bgpat = (bg & 0x01) ? glyphbg : 0;
+			P2(p) = (P2(p) & ~lmask) | ((fgpat | bgpat) & lmask);
+			fgpat = (fg & 0x08) ? glyph : 0;
+			bgpat = (bg & 0x08) ? glyphbg : 0;
+			P3(p) = (P3(p) & ~lmask) | ((fgpat | bgpat) & lmask);
+#endif
 			p += scanspan;
 			height--;
 		}
-	}
-	else {
+	} else {
 		u_int8_t *q = p;
 		u_int32_t lhalf, rhalf;
+		u_int32_t lhalfbg, rhalfbg;
 
 		while (height > 0) {
 			glyph = 0;
 			for (i = ri->ri_font->stride; i != 0; i--)
 				glyph = (glyph << 8) | *fb++;
 			glyph <<= (4 - ri->ri_font->stride) * NBBY;
+#if 0
 			lhalf = (glyph >> align) ^ inverse;
 			W(p) = (R(p) & ~lmask) | (lhalf & lmask);
+#else
+			lhalf = (glyph >> align);
+			lhalfbg = lhalf ^ ALL1BITS;
+
+			fgpat = (fg & 0x04) ? lhalf : 0;
+			bgpat = (bg & 0x04) ? lhalfbg : 0;
+			P0(p) = (P0(p) & ~lmask) | ((fgpat | bgpat) & lmask);
+			fgpat = (fg & 0x02) ? lhalf : 0;
+			bgpat = (bg & 0x02) ? lhalfbg : 0;
+			P1(p) = (P1(p) & ~lmask) | ((fgpat | bgpat) & lmask);
+			fgpat = (fg & 0x01) ? lhalf : 0;
+			bgpat = (bg & 0x01) ? lhalfbg : 0;
+			P2(p) = (P2(p) & ~lmask) | ((fgpat | bgpat) & lmask);
+			fgpat = (fg & 0x08) ? lhalf : 0;
+			bgpat = (bg & 0x08) ? lhalfbg : 0;
+			P3(p) = (P3(p) & ~lmask) | ((fgpat | bgpat) & lmask);
+#endif
 			p += BYTESDONE;
+#if 0
 			rhalf = (glyph << (BLITWIDTH - align)) ^ inverse;
 			W(p) = (rhalf & rmask) | (R(p) & ~rmask);
+#else
+			rhalf = (glyph << (BLITWIDTH - align));
+			rhalfbg = rhalf ^ ALL1BITS;
 
+			fgpat = (fg & 0x04) ? rhalf : 0;
+			bgpat = (bg & 0x04) ? rhalfbg : 0;
+			P0(p) = ((fgpat | bgpat) & rmask) | (P0(p) & ~rmask);
+			fgpat = (fg & 0x02) ? lhalf : 0;
+			bgpat = (bg & 0x02) ? lhalfbg : 0;
+			P1(p) = ((fgpat | bgpat) & rmask) | (P1(p) & ~rmask);
+			fgpat = (fg & 0x01) ? lhalf : 0;
+			bgpat = (bg & 0x01) ? lhalfbg : 0;
+			P2(p) = ((fgpat | bgpat) & rmask) | (P2(p) & ~rmask);
+			fgpat = (fg & 0x08) ? lhalf : 0;
+			bgpat = (bg & 0x08) ? lhalfbg : 0;
+			P3(p) = ((fgpat | bgpat) & rmask) | (P3(p) & ~rmask);
+#endif
 			p = (q += scanspan);
 			height--;
 		}
@@ -251,22 +305,53 @@ om_cursor(void *cookie, int on, int row, int col)
 	if (width <= BLITWIDTH) {
 		lmask &= rmask;
 		while (height > 0) {
+#if 0
 			image = R(p);
 			W(p) = (image & ~lmask) | ((image ^ ALL1BITS) & lmask);
+#else
+			image = P0(p);
+			P0(p) = (image & ~lmask) | ((image ^ ALL1BITS) & lmask);
+			image = P1(p);
+			P1(p) = (image & ~lmask) | ((image ^ ALL1BITS) & lmask);
+			image = P2(p);
+			P2(p) = (image & ~lmask) | ((image ^ ALL1BITS) & lmask);
+			image = P3(p);
+			P3(p) = (image & ~lmask) | ((image ^ ALL1BITS) & lmask);
+#endif
 			p += scanspan;
 			height--;
 		}
-	}
-	else {
+	} else {
 		u_int8_t *q = p;
 
 		while (height > 0) {
+#if 0
 			image = R(p);
 			W(p) = (image & ~lmask) | ((image ^ ALL1BITS) & lmask);
+#else
+			image = P0(p);
+			P0(p) = (image & ~lmask) | ((image ^ ALL1BITS) & lmask);
+			image = P1(p);
+			P1(p) = (image & ~lmask) | ((image ^ ALL1BITS) & lmask);
+			image = P2(p);
+			P2(p) = (image & ~lmask) | ((image ^ ALL1BITS) & lmask);
+			image = P3(p);
+			P3(p) = (image & ~lmask) | ((image ^ ALL1BITS) & lmask);
+#endif
 			p += BYTESDONE;
+#if 0
 			image = R(p);
 			W(p) = ((image ^ ALL1BITS) & rmask) | (image & ~rmask);
-
+#else
+			image = P0(p);
+			P0(p) = ((image ^ ALL1BITS) & rmask) | (image & ~rmask);
+			image = P1(p);
+			P1(p) = ((image ^ ALL1BITS) & rmask) | (image & ~rmask);
+			image = P2(p);
+			P2(p) = ((image ^ ALL1BITS) & rmask) | (image & ~rmask);
+			image = P3(p);
+			P3(p) = ((image ^ ALL1BITS) & rmask) | (image & ~rmask);
+#endif
 			p = (q += scanspan);
 			height--;
 		}
@@ -274,4 +359,31 @@ om_cursor(void *cookie, int on, int row, int col)
 	ri->ri_flg ^= RI_CURSOR;
 
 	return 0;
+}
+
+/*
+ * Allocate attribute. We just pack these into an integer.
+ */
+int
+om_allocattr(void *id, int fg, int bg, int flags, long *attrp)
+{
+	if ((flags & WSATTR_BLINK) != 0)
+		return EINVAL;
+	if ((flags & WSATTR_WSCOLORS) == 0) {
+		fg = WSCOL_WHITE;
+		bg = WSCOL_BLACK;
+	}
+
+	if ((flags & WSATTR_REVERSE) != 0) {
+		int swap;
+		swap = fg;
+		fg = bg;
+		bg = swap;
+	}
+
+	if ((flags & WSATTR_HILIT) != 0)
+		fg += 8;
+
+	*attrp = (fg << 24) | (bg << 16);
+        return 0;
 }
