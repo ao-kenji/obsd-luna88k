@@ -49,6 +49,8 @@
 
 #include <luna88k/dev/omrasops.h>
 
+#define om_windowmove1	om_windowmove4
+
 /* wscons emulator operations */
 int	om_cursor(void *, int, int, int);
 int	om_putchar(void *, int, int, u_int, long);
@@ -105,23 +107,23 @@ om_putchar(void *cookie, int row, int startcol, u_int uc, long attr)
 			glyph <<= (4 - ri->ri_font->stride) * NBBY;
 #if 0
 			glyph = (glyph >> align) ^ inverse;
-			W(p) = (R(p) & ~lmask) | (glyph & lmask);
+			*W(p) = (*R(p) & ~lmask) | (glyph & lmask);
 #else
 			glyph = (glyph >> align);
 			glyphbg = glyph ^ ALL1BITS;
 
 			fgpat = (fg & 0x04) ? glyph : 0;
 			bgpat = (bg & 0x04) ? glyphbg : 0;
-			P0(p) = (P0(p) & ~lmask) | ((fgpat | bgpat) & lmask);
+			*P0(p) = (*P0(p) & ~lmask) | ((fgpat | bgpat) & lmask);
 			fgpat = (fg & 0x02) ? glyph : 0;
 			bgpat = (bg & 0x02) ? glyphbg : 0;
-			P1(p) = (P1(p) & ~lmask) | ((fgpat | bgpat) & lmask);
+			*P1(p) = (*P1(p) & ~lmask) | ((fgpat | bgpat) & lmask);
 			fgpat = (fg & 0x01) ? glyph : 0;
 			bgpat = (bg & 0x01) ? glyphbg : 0;
-			P2(p) = (P2(p) & ~lmask) | ((fgpat | bgpat) & lmask);
+			*P2(p) = (*P2(p) & ~lmask) | ((fgpat | bgpat) & lmask);
 			fgpat = (fg & 0x08) ? glyph : 0;
 			bgpat = (bg & 0x08) ? glyphbg : 0;
-			P3(p) = (P3(p) & ~lmask) | ((fgpat | bgpat) & lmask);
+			*P3(p) = (*P3(p) & ~lmask) | ((fgpat | bgpat) & lmask);
 #endif
 			p += scanspan;
 			height--;
@@ -138,44 +140,44 @@ om_putchar(void *cookie, int row, int startcol, u_int uc, long attr)
 			glyph <<= (4 - ri->ri_font->stride) * NBBY;
 #if 0
 			lhalf = (glyph >> align) ^ inverse;
-			W(p) = (R(p) & ~lmask) | (lhalf & lmask);
+			*W(p) = (*R(p) & ~lmask) | (lhalf & lmask);
 #else
 			lhalf = (glyph >> align);
 			lhalfbg = lhalf ^ ALL1BITS;
 
 			fgpat = (fg & 0x04) ? lhalf : 0;
 			bgpat = (bg & 0x04) ? lhalfbg : 0;
-			P0(p) = (P0(p) & ~lmask) | ((fgpat | bgpat) & lmask);
+			*P0(p) = (*P0(p) & ~lmask) | ((fgpat | bgpat) & lmask);
 			fgpat = (fg & 0x02) ? lhalf : 0;
 			bgpat = (bg & 0x02) ? lhalfbg : 0;
-			P1(p) = (P1(p) & ~lmask) | ((fgpat | bgpat) & lmask);
+			*P1(p) = (*P1(p) & ~lmask) | ((fgpat | bgpat) & lmask);
 			fgpat = (fg & 0x01) ? lhalf : 0;
 			bgpat = (bg & 0x01) ? lhalfbg : 0;
-			P2(p) = (P2(p) & ~lmask) | ((fgpat | bgpat) & lmask);
+			*P2(p) = (*P2(p) & ~lmask) | ((fgpat | bgpat) & lmask);
 			fgpat = (fg & 0x08) ? lhalf : 0;
 			bgpat = (bg & 0x08) ? lhalfbg : 0;
-			P3(p) = (P3(p) & ~lmask) | ((fgpat | bgpat) & lmask);
+			*P3(p) = (*P3(p) & ~lmask) | ((fgpat | bgpat) & lmask);
 #endif
 			p += BYTESDONE;
 #if 0
 			rhalf = (glyph << (BLITWIDTH - align)) ^ inverse;
-			W(p) = (rhalf & rmask) | (R(p) & ~rmask);
+			*W(p) = (rhalf & rmask) | (*R(p) & ~rmask);
 #else
 			rhalf = (glyph << (BLITWIDTH - align));
 			rhalfbg = rhalf ^ ALL1BITS;
 
 			fgpat = (fg & 0x04) ? rhalf : 0;
 			bgpat = (bg & 0x04) ? rhalfbg : 0;
-			P0(p) = ((fgpat | bgpat) & rmask) | (P0(p) & ~rmask);
-			fgpat = (fg & 0x02) ? lhalf : 0;
-			bgpat = (bg & 0x02) ? lhalfbg : 0;
-			P1(p) = ((fgpat | bgpat) & rmask) | (P1(p) & ~rmask);
-			fgpat = (fg & 0x01) ? lhalf : 0;
-			bgpat = (bg & 0x01) ? lhalfbg : 0;
-			P2(p) = ((fgpat | bgpat) & rmask) | (P2(p) & ~rmask);
-			fgpat = (fg & 0x08) ? lhalf : 0;
-			bgpat = (bg & 0x08) ? lhalfbg : 0;
-			P3(p) = ((fgpat | bgpat) & rmask) | (P3(p) & ~rmask);
+			*P0(p) = ((fgpat | bgpat) & rmask) | (*P0(p) & ~rmask);
+			fgpat = (fg & 0x02) ? rhalf : 0;
+			bgpat = (bg & 0x02) ? rhalfbg : 0;
+			*P1(p) = ((fgpat | bgpat) & rmask) | (*P1(p) & ~rmask);
+			fgpat = (fg & 0x01) ? rhalf : 0;
+			bgpat = (bg & 0x01) ? rhalfbg : 0;
+			*P2(p) = ((fgpat | bgpat) & rmask) | (*P2(p) & ~rmask);
+			fgpat = (fg & 0x08) ? rhalf : 0;
+			bgpat = (bg & 0x08) ? rhalfbg : 0;
+			*P3(p) = ((fgpat | bgpat) & rmask) | (*P3(p) & ~rmask);
 #endif
 			p = (q += scanspan);
 			height--;
@@ -306,17 +308,17 @@ om_cursor(void *cookie, int on, int row, int col)
 		lmask &= rmask;
 		while (height > 0) {
 #if 0
-			image = R(p);
-			W(p) = (image & ~lmask) | ((image ^ ALL1BITS) & lmask);
+			image = *R(p);
+			*W(p) = (image & ~lmask) | ((image ^ ALL1BITS) & lmask);
 #else
-			image = P0(p);
-			P0(p) = (image & ~lmask) | ((image ^ ALL1BITS) & lmask);
-			image = P1(p);
-			P1(p) = (image & ~lmask) | ((image ^ ALL1BITS) & lmask);
-			image = P2(p);
-			P2(p) = (image & ~lmask) | ((image ^ ALL1BITS) & lmask);
-			image = P3(p);
-			P3(p) = (image & ~lmask) | ((image ^ ALL1BITS) & lmask);
+			image = *P0(p);
+			*P0(p) = (image & ~lmask) | ((image ^ ALL1BITS) & lmask);
+			image = *P1(p);
+			*P1(p) = (image & ~lmask) | ((image ^ ALL1BITS) & lmask);
+			image = *P2(p);
+			*P2(p) = (image & ~lmask) | ((image ^ ALL1BITS) & lmask);
+			image = *P3(p);
+			*P3(p) = (image & ~lmask) | ((image ^ ALL1BITS) & lmask);
 #endif
 			p += scanspan;
 			height--;
@@ -326,31 +328,31 @@ om_cursor(void *cookie, int on, int row, int col)
 
 		while (height > 0) {
 #if 0
-			image = R(p);
-			W(p) = (image & ~lmask) | ((image ^ ALL1BITS) & lmask);
+			image = *R(p);
+			*W(p) = (image & ~lmask) | ((image ^ ALL1BITS) & lmask);
 #else
-			image = P0(p);
-			P0(p) = (image & ~lmask) | ((image ^ ALL1BITS) & lmask);
-			image = P1(p);
-			P1(p) = (image & ~lmask) | ((image ^ ALL1BITS) & lmask);
-			image = P2(p);
-			P2(p) = (image & ~lmask) | ((image ^ ALL1BITS) & lmask);
-			image = P3(p);
-			P3(p) = (image & ~lmask) | ((image ^ ALL1BITS) & lmask);
+			image = *P0(p);
+			*P0(p) = (image & ~lmask) | ((image ^ ALL1BITS) & lmask);
+			image = *P1(p);
+			*P1(p) = (image & ~lmask) | ((image ^ ALL1BITS) & lmask);
+			image = *P2(p);
+			*P2(p) = (image & ~lmask) | ((image ^ ALL1BITS) & lmask);
+			image = *P3(p);
+			*P3(p) = (image & ~lmask) | ((image ^ ALL1BITS) & lmask);
 #endif
 			p += BYTESDONE;
 #if 0
-			image = R(p);
-			W(p) = ((image ^ ALL1BITS) & rmask) | (image & ~rmask);
+			image = *R(p);
+			*W(p) = ((image ^ ALL1BITS) & rmask) | (image & ~rmask);
 #else
-			image = P0(p);
-			P0(p) = ((image ^ ALL1BITS) & rmask) | (image & ~rmask);
-			image = P1(p);
-			P1(p) = ((image ^ ALL1BITS) & rmask) | (image & ~rmask);
-			image = P2(p);
-			P2(p) = ((image ^ ALL1BITS) & rmask) | (image & ~rmask);
-			image = P3(p);
-			P3(p) = ((image ^ ALL1BITS) & rmask) | (image & ~rmask);
+			image = *P0(p);
+			*P0(p) = ((image ^ ALL1BITS) & rmask) | (image & ~rmask);
+			image = *P1(p);
+			*P1(p) = ((image ^ ALL1BITS) & rmask) | (image & ~rmask);
+			image = *P2(p);
+			*P2(p) = ((image ^ ALL1BITS) & rmask) | (image & ~rmask);
+			image = *P3(p);
+			*P3(p) = ((image ^ ALL1BITS) & rmask) | (image & ~rmask);
 #endif
 			p = (q += scanspan);
 			height--;
