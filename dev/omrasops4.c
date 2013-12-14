@@ -67,7 +67,7 @@
  */
 
 /*
- * Graphics routines for OMRON LUNA 1bpp frame buffer.  On LUNA's frame
+ * Graphics routines for OMRON LUNA 4bpp frame buffer.  On LUNA's frame
  * buffer, pixels are not byte-addressed.
  *
  * Based on src/sys/arch/hp300/dev/diofb_mono.c
@@ -82,14 +82,15 @@
 #include <dev/rasops/rasops_masks.h>
 
 #include <luna88k/dev/maskbits.h>
+#include <luna88k/dev/omrasops.h>
 
 /* Prototypes */
-int om_windowmove1(struct rasops_info *, u_int16_t, u_int16_t,
+int om_windowmove4(struct rasops_info *, u_int16_t, u_int16_t,
 	u_int16_t, u_int16_t, u_int16_t, u_int16_t, int16_t,
 	int16_t /* ignored */);
 
 int
-om_windowmove1(struct rasops_info *ri, u_int16_t sx, u_int16_t sy,
+om_windowmove4(struct rasops_info *ri, u_int16_t sx, u_int16_t sy,
 	u_int16_t dx, u_int16_t dy, u_int16_t cx, u_int16_t cy, int16_t rop,
 	int16_t planemask /* ignored */)
 {
@@ -137,7 +138,10 @@ om_windowmove1(struct rasops_info *ri, u_int16_t sx, u_int16_t sy,
 		dstBit = dx & 0x1f;
 
 		while (cy--) {
-			getandputrop(R(psrc), srcBit, dstBit, cx, W(pdst), rop);
+			getandputrop(P0(psrc), srcBit, dstBit, cx, P0(pdst), rop);
+			getandputrop(P1(psrc), srcBit, dstBit, cx, P1(pdst), rop);
+			getandputrop(P2(psrc), srcBit, dstBit, cx, P2(pdst), rop);
+			getandputrop(P3(psrc), srcBit, dstBit, cx, P3(pdst), rop);
 			pdst += width;
 			psrc += width;
 		}
@@ -164,8 +168,14 @@ om_windowmove1(struct rasops_info *ri, u_int16_t sx, u_int16_t sy,
 				pdst = pdstLine;
 
 				if (startmask) {
-					getandputrop(R(psrc), (sx & 0x1f),
-					    (dx & 0x1f), nstart, W(pdst), rop);
+					getandputrop(P0(psrc), (sx & 0x1f),
+					    (dx & 0x1f), nstart, P0(pdst), rop);
+					getandputrop(P1(psrc), (sx & 0x1f),
+					    (dx & 0x1f), nstart, P1(pdst), rop);
+					getandputrop(P2(psrc), (sx & 0x1f),
+					    (dx & 0x1f), nstart, P2(pdst), rop);
+					getandputrop(P3(psrc), (sx & 0x1f),
+					    (dx & 0x1f), nstart, P3(pdst), rop);
 					pdst++;
 					if (srcStartOver)
 						psrc++;
@@ -175,29 +185,52 @@ om_windowmove1(struct rasops_info *ri, u_int16_t sx, u_int16_t sy,
 				if (xoffSrc == 0) {
 					nl = nlMiddle;
 					while (nl--) {
-						if (rop == RR_CLEAR)
-							W(pdst) = 0;
-						else
-							W(pdst) = R(psrc);
+						if (rop == RR_CLEAR) {
+							*P0(pdst) = 0;
+							*P1(pdst) = 0;
+							*P2(pdst) = 0;
+							*P3(pdst) = 0;
+						} else {
+							*P0(pdst) = *P0(psrc);
+							*P1(pdst) = *P1(psrc);
+							*P2(pdst) = *P2(psrc);
+							*P3(pdst) = *P3(psrc);
+						}
 						psrc++;
 						pdst++;
 					}
 				} else {
 					nl = nlMiddle + 1;
 					while (--nl) {
-						if (rop == RR_CLEAR)
-							W(pdst) = 0;
-						else
-							getunalignedword(R(psrc),
-							    xoffSrc, *W(pdst));
+						if (rop == RR_CLEAR) {
+							*P0(pdst) = 0;
+							*P1(pdst) = 0;
+							*P2(pdst) = 0;
+							*P3(pdst) = 0;
+						} else {
+							getunalignedword(P0(psrc),
+							    xoffSrc, *P0(pdst));
+							getunalignedword(P1(psrc),
+							    xoffSrc, *P1(pdst));
+							getunalignedword(P2(psrc),
+							    xoffSrc, *P2(pdst));
+							getunalignedword(P3(psrc),
+							    xoffSrc, *P3(pdst));
+						}
 						pdst++;
 						psrc++;
 					}
 				}
 
 				if (endmask) {
-					getandputrop(R(psrc), xoffSrc, 0, nend,
-					    W(pdst), rop);
+					getandputrop(P0(psrc), xoffSrc, 0, nend,
+					    P0(pdst), rop);
+					getandputrop(P1(psrc), xoffSrc, 0, nend,
+					    P1(pdst), rop);
+					getandputrop(P2(psrc), xoffSrc, 0, nend,
+					    P2(pdst), rop);
+					getandputrop(P3(psrc), xoffSrc, 0, nend,
+					    P3(pdst), rop);
 				}
 
 				pdstLine += width;
@@ -218,27 +251,49 @@ om_windowmove1(struct rasops_info *ri, u_int16_t sx, u_int16_t sy,
 				pdst = pdstLine;
 
 				if (endmask) {
-					getandputrop(R(psrc), xoffSrc, 0, nend,
-					    W(pdst), rop);
+					getandputrop(P0(psrc), xoffSrc, 0, nend,
+					    P0(pdst), rop);
+					getandputrop(P1(psrc), xoffSrc, 0, nend,
+					    P1(pdst), rop);
+					getandputrop(P2(psrc), xoffSrc, 0, nend,
+					    P2(pdst), rop);
+					getandputrop(P3(psrc), xoffSrc, 0, nend,
+					    P3(pdst), rop);
 				}
 
 				nl = nlMiddle + 1;
 				while (--nl) {
 					--psrc;
 					--pdst;
-					if (rop == RR_CLEAR)
-						W(pdst) = 0;
-					else
-						getunalignedword(R(psrc), xoffSrc,
-						    *W(pdst));
+					if (rop == RR_CLEAR) {
+						*P0(pdst) = 0;
+						*P1(pdst) = 0;
+						*P2(pdst) = 0;
+						*P3(pdst) = 0;
+					} else {
+						getunalignedword(P0(psrc),
+						    xoffSrc, *P0(pdst));
+						getunalignedword(P1(psrc),
+						    xoffSrc, *P1(pdst));
+						getunalignedword(P2(psrc),
+						    xoffSrc, *P2(pdst));
+						getunalignedword(P3(psrc),
+						    xoffSrc, *P3(pdst));
+					}
 				}
 
 				if (startmask) {
 					if (srcStartOver)
 						--psrc;
 					--pdst;
-					getandputrop(R(psrc), (sx & 0x1f),
-					    (dx & 0x1f), nstart, W(pdst), rop);
+					getandputrop(P0(psrc), (sx & 0x1f),
+					    (dx & 0x1f), nstart, P0(pdst), rop);
+					getandputrop(P1(psrc), (sx & 0x1f),
+					    (dx & 0x1f), nstart, P1(pdst), rop);
+					getandputrop(P2(psrc), (sx & 0x1f),
+					    (dx & 0x1f), nstart, P2(pdst), rop);
+					getandputrop(P3(psrc), (sx & 0x1f),
+					    (dx & 0x1f), nstart, P3(pdst), rop);
 				}
 
 				pdstLine += width;
