@@ -93,7 +93,7 @@ om1_putchar(void *cookie, int row, int startcol, u_int uc, long attr)
 	struct rasops_info *ri = cookie;
 	u_int8_t *p;
 	int scanspan, startx, height, width, align, y;
-	u_int32_t lmask, rmask, glyph, inverse;
+	u_int32_t lmask, rmask, glyph, glyphbg, inverse, fgpat, bgpat;
 	int i, fg, bg;
 	u_int8_t *fb;
 
@@ -118,6 +118,7 @@ om1_putchar(void *cookie, int row, int startcol, u_int uc, long attr)
 			for (i = ri->ri_font->stride; i != 0; i--)
 				glyph = (glyph << 8) | *fb++;
 			glyph <<= (4 - ri->ri_font->stride) * NBBY;
+#if 0
 			glyph = (glyph >> align) ^ inverse;
 			*W(p) = (*R(p) & ~lmask) | (glyph & lmask);
 			p += scanspan;
@@ -126,12 +127,14 @@ om1_putchar(void *cookie, int row, int startcol, u_int uc, long attr)
 	} else {
 		u_int8_t *q = p;
 		u_int32_t lhalf, rhalf;
+		u_int32_t lhalfbg, rhalfbg;
 
 		while (height > 0) {
 			glyph = 0;
 			for (i = ri->ri_font->stride; i != 0; i--)
 				glyph = (glyph << 8) | *fb++;
 			glyph <<= (4 - ri->ri_font->stride) * NBBY;
+#if 0
 			lhalf = (glyph >> align) ^ inverse;
 			*W(p) = (*R(p) & ~lmask) | (lhalf & lmask);
 
