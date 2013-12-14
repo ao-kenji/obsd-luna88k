@@ -93,6 +93,47 @@ struct hwcmap {
 	u_int8_t b[CMAP_SIZE];
 };
 
+static const struct {
+	u_int8_t r;
+	u_int8_t g;
+	u_int8_t b;
+} lunacmap[16] = {
+#if 0
+	{   0,   0,   0},
+	{   0,   0, 127},
+	{   0, 127,   0},
+	{   0, 127, 127},
+	{ 127,   0,   0},
+	{ 127,   0, 127},
+	{ 127, 127,   0},
+	{ 127, 127, 127},
+	{   0,   0,   0},
+	{   0,   0, 255},
+	{   0, 255,   0},
+	{   0, 255, 255},
+	{ 255,   0,   0},
+	{ 255,   0, 255},
+	{ 255, 255,   0},
+#else
+	{   0,   0,   0},
+	{ 255, 255, 255},
+	{ 255, 255, 255},
+	{ 255, 255, 255},
+	{ 255, 255, 255},
+	{ 255, 255, 255},
+	{ 255, 255, 255},
+	{ 255, 255, 255},
+	{ 255, 255, 255},
+	{ 255, 255, 255},
+	{ 255, 255, 255},
+	{ 255, 255, 255},
+	{ 255, 255, 255},
+	{ 255, 255, 255},
+	{ 255, 255, 255},
+	{ 255, 255, 255},
+#endif
+};
+
 struct omfb_softc {
 	struct device sc_dev;		/* base device */
 	struct om_hwdevconfig *sc_dc;	/* device configuration */
@@ -113,6 +154,7 @@ int	om_copycols(void *, int, int, int, int);
 int	om_copyrows(void *, int, int, int num);
 int	om_erasecols(void *, int, int, int, long);
 int	om_eraserows(void *, int, int, long);
+int	om_allocattr(void *, int, int, int, long *);
 
 struct wsscreen_descr omfb_stdscreen = {
 	"std"
@@ -424,7 +466,7 @@ omfb_getdevconfig(paddr, dc)
 		u_int32_t u;
 	} rfcnt;
 
-#if 0	/* Workaround for making Xorg mono server work */
+#if 1	/* Workaround for making Xorg mono server work */
 	switch (hwplanebits) {
 	case 8:
 		bpp = 8;	/* XXX check monochrome bit in DIPSW */
@@ -452,6 +494,7 @@ omfb_getdevconfig(paddr, dc)
 	if ((hwplanebits == 1) || (hwplanebits == 4)) {
 		struct bt454 *odac = (struct bt454 *)OMFB_RAMDAC;
 
+#if 0
 		odac->bt_addr = 0;
 		odac->bt_cmap = 0;
 		odac->bt_cmap = 0;
@@ -461,6 +504,14 @@ omfb_getdevconfig(paddr, dc)
 			odac->bt_cmap = 255;
 			odac->bt_cmap = 255;
 		}
+#else
+		for (i = 0; i < 16; i++) {
+			odac->bt_cmap = lunacmap[i].r;
+			odac->bt_cmap = lunacmap[i].g;
+			odac->bt_cmap = lunacmap[i].b;
+		}
+#endif
+
 	} else if (hwplanebits == 8) {
 		struct bt458 *ndac = (struct bt458 *)OMFB_RAMDAC;
 
@@ -515,6 +566,7 @@ omfb_getdevconfig(paddr, dc)
 	ri->ri_ops.erasecols = om_erasecols;
 	ri->ri_ops.copyrows = om_copyrows;
 	ri->ri_ops.eraserows = om_eraserows;
+	ri->ri_ops.alloc_attr = om_allocattr;
 	omfb_stdscreen.textops = &ri->ri_ops;
 	omfb_stdscreen.fontwidth = ri->ri_font->fontwidth;
 	omfb_stdscreen.fontheight = ri->ri_font->fontheight;
