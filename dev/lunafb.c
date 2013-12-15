@@ -475,24 +475,11 @@ omfb_getdevconfig(paddr, dc)
 	if ((hwplanebits == 1) || (hwplanebits == 4)) {
 		struct bt454 *odac = (struct bt454 *)OMFB_RAMDAC;
 
-#if 0
-		odac->bt_addr = 0;
-		odac->bt_cmap = 0;
-		odac->bt_cmap = 0;
-		odac->bt_cmap = 0;
-		for (i = 1; i < 16; i++) {
-			odac->bt_cmap = 255;
-			odac->bt_cmap = 255;
-			odac->bt_cmap = 255;
-		}
-#else
 		for (i = 0; i < 16; i++) {
 			odac->bt_cmap = lunacmap[i].r;
 			odac->bt_cmap = lunacmap[i].g;
 			odac->bt_cmap = lunacmap[i].b;
 		}
-#endif
-
 	} else if (hwplanebits == 8) {
 		struct bt458 *ndac = (struct bt458 *)OMFB_RAMDAC;
 
@@ -551,7 +538,12 @@ omfb_getdevconfig(paddr, dc)
 	omfb_stdscreen.textops = &ri->ri_ops;
 	omfb_stdscreen.fontwidth = ri->ri_font->fontwidth;
 	omfb_stdscreen.fontheight = ri->ri_font->fontheight;
+#if 0
 	omfb_stdscreen.capabilities = ri->ri_caps & ~WSSCREEN_UNDERLINE;
+#else
+	omfb_stdscreen.capabilities
+		= WSSCREEN_HILIT | WSSCREEN_WSCOLORS | WSSCREEN_REVERSE;
+#endif
 }
 
 int
