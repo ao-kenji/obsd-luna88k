@@ -113,6 +113,7 @@ static const struct {
 	{ 255,   0,   0},
 	{ 255,   0, 255},
 	{ 255, 255,   0},
+	{ 255, 255, 255},
 };
 
 struct omfb_softc {
