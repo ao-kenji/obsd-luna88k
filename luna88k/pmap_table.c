@@ -67,29 +67,26 @@ luna88k_board_table[] = {
 	{ BMAP_BMSEL,		PAGE_SIZE,		RW,	CI },
 	{ BMAP_BMP,		BMAP_BMAP0 - BMAP_BMP,	RW,	CI, TRUE },
 	{ BMAP_BMAP0,		BMAP_BMAP1 - BMAP_BMAP0, RW,	CI, TRUE },
-#if 1 /* not until console or X11 needs them */
-	{ BMAP_BMAP1,		BMAP_BMAP2 - BMAP_BMAP1, RW,	CI },
-	{ BMAP_BMAP2,		BMAP_BMAP3 - BMAP_BMAP2, RW,	CI },
-	{ BMAP_BMAP3,		BMAP_BMAP4 - BMAP_BMAP3, RW,	CI },
+	{ BMAP_BMAP1,		BMAP_BMAP2 - BMAP_BMAP1, RW,	CI, TRUE },
+	{ BMAP_BMAP2,		BMAP_BMAP3 - BMAP_BMAP2, RW,	CI, TRUE },
+	{ BMAP_BMAP3,		BMAP_BMAP4 - BMAP_BMAP3, RW,	CI, TRUE },
+#if 0 /* not until console or X11 needs them */
 	{ BMAP_BMAP4,		BMAP_BMAP5 - BMAP_BMAP4, RW,	CI },
 	{ BMAP_BMAP5,		BMAP_BMAP6 - BMAP_BMAP5, RW,	CI },
 	{ BMAP_BMAP6,		BMAP_BMAP7 - BMAP_BMAP6, RW,	CI },
 	{ BMAP_BMAP7,		BMAP_FN - BMAP_BMAP7,	RW,	CI },
 #else
-	{ BMAP_BMAP1,		PAGE_SIZE,		RW,	CI },
-	{ BMAP_BMAP2,		PAGE_SIZE,		RW,	CI },
-	{ BMAP_BMAP3,		PAGE_SIZE,		RW,	CI },
 	{ BMAP_BMAP4,		PAGE_SIZE,		RW,	CI },
 	{ BMAP_BMAP5,		PAGE_SIZE,		RW,	CI },
 	{ BMAP_BMAP6,		PAGE_SIZE,		RW,	CI },
 	{ BMAP_BMAP7,		PAGE_SIZE,		RW,	CI },
 #endif
 	{ BMAP_FN,		PAGE_SIZE,		RW,	CI },
-#if 1 /* not until console or X11 needs them */
 	{ BMAP_FN0,		PAGE_SIZE,		RW,	CI },
 	{ BMAP_FN1,		PAGE_SIZE,		RW,	CI },
 	{ BMAP_FN2,		PAGE_SIZE,		RW,	CI },
 	{ BMAP_FN3,		PAGE_SIZE,		RW,	CI },
+#if 0 /* not until console or X11 needs them */
 	{ BMAP_FN4,		PAGE_SIZE,		RW,	CI },
 	{ BMAP_FN5,		PAGE_SIZE,		RW,	CI },
 	{ BMAP_FN6,		PAGE_SIZE,		RW,	CI },
