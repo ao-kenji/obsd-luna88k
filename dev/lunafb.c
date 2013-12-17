@@ -350,7 +350,7 @@ omfbmmap(v, offset, prot)
 	if (offset >= 0 && offset < OMFB_SIZE)
 		cookie = (paddr_t)(trunc_page(dc->dc_videobase) + offset);
 #else
-	if (offset >= 0 && offset < dc->dc_rowbytes * dc->dc_ht)
+	if (offset >= 0 && offset < dc->dc_rowbytes * dc->dc_ht * hwplanebits)
 		cookie = (paddr_t)(trunc_page(OMFB_FB_RADDR) + offset);
 #endif
 	return cookie;
