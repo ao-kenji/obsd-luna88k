@@ -97,23 +97,23 @@ static const struct {
 	u_int8_t r;
 	u_int8_t g;
 	u_int8_t b;
-} lunacmap[16] = {
-	{   0,   0,   0},
-	{   0,   0, 127},
-	{   0, 127,   0},
-	{   0, 127, 127},
-	{ 127,   0,   0},
-	{ 127,   0, 127},
-	{ 127, 127,   0},
-	{ 127, 127, 127},
-	{   0,   0,   0},
-	{   0,   0, 255},
-	{   0, 255,   0},
-	{   0, 255, 255},
-	{ 255,   0,   0},
-	{ 255,   0, 255},
-	{ 255, 255,   0},
-	{ 255, 255, 255},
+} ansicmap[16] = {
+	{    0,    0,    0},
+	{ 0x80,    0,    0},
+	{    0, 0x80,    0},
+	{ 0x80, 0x80,    0},
+	{    0,    0, 0x80},
+	{ 0x80,    0, 0x80},
+	{    0, 0x80, 0x80},
+	{ 0xc0, 0xc0, 0xc0},
+	{ 0x80, 0x80, 0x80},
+	{ 0xff,    0,    0},
+	{    0, 0xff,    0},
+	{ 0xff, 0xff,    0},
+	{    0,    0, 0xff},
+	{ 0xff,    0, 0xff},
+	{    0, 0xff, 0xff},
+	{ 0xff, 0xff, 0xff},
 };
 
 struct omfb_softc {
@@ -477,9 +477,9 @@ omfb_getdevconfig(paddr, dc)
 		struct bt454 *odac = (struct bt454 *)OMFB_RAMDAC;
 
 		for (i = 0; i < 16; i++) {
-			odac->bt_cmap = lunacmap[i].r;
-			odac->bt_cmap = lunacmap[i].g;
-			odac->bt_cmap = lunacmap[i].b;
+			odac->bt_cmap = ansicmap[i].r;
+			odac->bt_cmap = ansicmap[i].g;
+			odac->bt_cmap = ansicmap[i].b;
 		}
 	} else if (hwplanebits == 8) {
 		struct bt458 *ndac = (struct bt458 *)OMFB_RAMDAC;
