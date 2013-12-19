@@ -41,3 +41,12 @@
  */
 #define RR_CLEAR        0x0
 #define RR_COPY         0x3
+
+/*
+ * Macros used in om_{cursor,putchar}[14].
+ */
+#define	ALL1BITS	(~0U)
+#define	ALL0BITS	(0U)
+#define	BLITWIDTH	(32)
+#define	ALIGNMASK	(0x1f)
+#define	BYTESDONE	(4)

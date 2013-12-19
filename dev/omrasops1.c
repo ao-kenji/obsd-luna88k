@@ -82,11 +82,141 @@
 #include <dev/rasops/rasops_masks.h>
 
 #include <luna88k/dev/maskbits.h>
+#include <luna88k/dev/omrasops.h>
 
 /* Prototypes */
+int om_cursor1(void *, int, int, int);
+int om_putchar1(void *, int, int, u_int, long);
 int om_windowmove1(struct rasops_info *, u_int16_t, u_int16_t,
 	u_int16_t, u_int16_t, u_int16_t, u_int16_t, int16_t,
 	int16_t /* ignored */);
+
+/*
+ * Position|{enable|disable} the cursor at the specified location.
+ * - 1bpp version -
+ */
+int
+om_cursor1(void *cookie, int on, int row, int col)
+{
+	struct rasops_info *ri = cookie;
+	u_int8_t *p;
+	int scanspan, startx, height, width, align, y;
+	u_int32_t lmask, rmask, image;
+
+	if (!on) {
+		/* make sure it's on */
+		if ((ri->ri_flg & RI_CURSOR) == 0)
+			return 0;
+
+		row = ri->ri_crow;
+		col = ri->ri_ccol;
+	} else {
+		/* unpaint the old copy. */
+		ri->ri_crow = row;
+		ri->ri_ccol = col;
+	}
+
+	scanspan = ri->ri_stride;
+	y = ri->ri_font->fontheight * row;
+	startx = ri->ri_font->fontwidth * col;
+	height = ri->ri_font->fontheight;
+
+	p = (u_int8_t *)ri->ri_bits + y * scanspan + ((startx / 32) * 4);
+	align = startx & ALIGNMASK;
+	width = ri->ri_font->fontwidth + align;
+	lmask = ALL1BITS >> align;
+	rmask = ALL1BITS << (-width & ALIGNMASK);
+	if (width <= BLITWIDTH) {
+		lmask &= rmask;
+		while (height > 0) {
+			image = *R(p);
+			*W(p) = (image & ~lmask) | ((image ^ ALL1BITS) & lmask);
+			p += scanspan;
+			height--;
+		}
+	} else {
+		u_int8_t *q = p;
+
+		while (height > 0) {
+			image = *R(p);
+			*W(p) = (image & ~lmask) | ((image ^ ALL1BITS) & lmask);
+			p += BYTESDONE;
+
+			image = *R(p);
+			*W(p) = ((image ^ ALL1BITS) & rmask) | (image & ~rmask);
+			p = (q += scanspan);
+			height--;
+		}
+	}
+	ri->ri_flg ^= RI_CURSOR;
+
+	return 0;
+}
+
+/*
+ * Blit a character at the specified co-ordinates.
+ * - 1bpp version -
+ */
+int
+om_putchar1(void *cookie, int row, int startcol, u_int uc, long attr)
+{
+	struct rasops_info *ri = cookie;
+	u_int8_t *p;
+	int scanspan, startx, height, width, align, y;
+	u_int32_t lmask, rmask, glyph, inverse;
+	int i, fg, bg;
+	u_int8_t *fb;
+
+	scanspan = ri->ri_stride;
+	y = ri->ri_font->fontheight * row;
+	startx = ri->ri_font->fontwidth * startcol;
+	height = ri->ri_font->fontheight;
+	fb = (u_int8_t *)ri->ri_font->data +
+	    (uc - ri->ri_font->firstchar) * ri->ri_fontscale;
+	ri->ri_ops.unpack_attr(cookie, attr, &fg, &bg, NULL);
+	inverse = (bg != 0) ? ALL1BITS : ALL0BITS;
+
+	p = (u_int8_t *)ri->ri_bits + y * scanspan + ((startx / 32) * 4);
+	align = startx & ALIGNMASK;
+	width = ri->ri_font->fontwidth + align;
+	lmask = ALL1BITS >> align;
+	rmask = ALL1BITS << (-width & ALIGNMASK);
+	if (width <= BLITWIDTH) {
+		lmask &= rmask;
+		while (height > 0) {
+			glyph = 0;
+			for (i = ri->ri_font->stride; i != 0; i--)
+				glyph = (glyph << 8) | *fb++;
+			glyph <<= (4 - ri->ri_font->stride) * NBBY;
+			glyph = (glyph >> align) ^ inverse;
+			*W(p) = (*R(p) & ~lmask) | (glyph & lmask);
+			p += scanspan;
+			height--;
+		}
+	} else {
+		u_int8_t *q = p;
+		u_int32_t lhalf, rhalf;
+
+		while (height > 0) {
+			glyph = 0;
+			for (i = ri->ri_font->stride; i != 0; i--)
+				glyph = (glyph << 8) | *fb++;
+			glyph <<= (4 - ri->ri_font->stride) * NBBY;
+			lhalf = (glyph >> align) ^ inverse;
+			*W(p) = (*R(p) & ~lmask) | (lhalf & lmask);
+
+			p += BYTESDONE;
+
+			rhalf = (glyph << (BLITWIDTH - align)) ^ inverse;
+			*W(p) = (rhalf & rmask) | (*R(p) & ~rmask);
+
+			p = (q += scanspan);
+			height--;
+		}
+	}
+
+	return 0;
+}
 
 int
 om_windowmove1(struct rasops_info *ri, u_int16_t sx, u_int16_t sy,

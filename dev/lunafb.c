@@ -130,8 +130,10 @@ struct om_hwdevconfig omfb_console_dc;
 void omfb_getdevconfig(paddr_t, struct om_hwdevconfig *);
 
 /* in omrasops.c */
-int	om_cursor(void *, int, int, int);
-int	om_putchar(void *, int, int, u_int, long);
+int	om_cursor1(void *, int, int, int);
+int	om_putchar1(void *, int, int, u_int, long);
+int	om_cursor4(void *, int, int, int);
+int	om_putchar4(void *, int, int, u_int, long);
 int	om_copycols(void *, int, int, int, int);
 int	om_copyrows(void *, int, int, int num);
 int	om_erasecols(void *, int, int, int, long);
@@ -529,8 +531,13 @@ omfb_getdevconfig(paddr, dc)
 
 	omfb_stdscreen.ncols = ri->ri_cols;
 	omfb_stdscreen.nrows = ri->ri_rows;
-	ri->ri_ops.cursor = om_cursor;
-	ri->ri_ops.putchar = om_putchar;
+#if 0
+	ri->ri_ops.cursor = om_cursor1;
+	ri->ri_ops.putchar = om_putchar1;
+#else
+	ri->ri_ops.cursor = om_cursor4;
+	ri->ri_ops.putchar = om_putchar4;
+#endif
 	ri->ri_ops.copycols = om_copycols;
 	ri->ri_ops.erasecols = om_erasecols;
 	ri->ri_ops.copyrows = om_copyrows;

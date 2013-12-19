@@ -1,4 +1,4 @@
-/*	$OpenBSD: omrasops1.c,v 1.1 2013/11/16 22:45:37 aoyama Exp $	*/
+/*	$OpenBSD$	*/
 
 /*
  * Copyright (c) 2005, Miodrag Vallat.
@@ -85,9 +85,198 @@
 #include <luna88k/dev/omrasops.h>
 
 /* Prototypes */
+int om_cursor4(void *, int, int, int);
+int om_putchar4(void *, int, int, u_int, long);
 int om_windowmove4(struct rasops_info *, u_int16_t, u_int16_t,
 	u_int16_t, u_int16_t, u_int16_t, u_int16_t, int16_t,
 	int16_t /* ignored */);
+
+/*
+ * Position|{enable|disable} the cursor at the specified location
+ * - 4bpp version -
+ */
+int
+om_cursor4(void *cookie, int on, int row, int col)
+{
+	struct rasops_info *ri = cookie;
+	u_int8_t *p;
+	int scanspan, startx, height, width, align, y;
+	u_int32_t lmask, rmask, image;
+
+	if (!on) {
+		/* make sure it's on */
+		if ((ri->ri_flg & RI_CURSOR) == 0)
+			return 0;
+
+		row = ri->ri_crow;
+		col = ri->ri_ccol;
+	} else {
+		/* unpaint the old copy. */
+		ri->ri_crow = row;
+		ri->ri_ccol = col;
+	}
+
+	scanspan = ri->ri_stride;
+	y = ri->ri_font->fontheight * row;
+	startx = ri->ri_font->fontwidth * col;
+	height = ri->ri_font->fontheight;
+
+	p = (u_int8_t *)ri->ri_bits + y * scanspan + ((startx / 32) * 4);
+	align = startx & ALIGNMASK;
+	width = ri->ri_font->fontwidth + align;
+	lmask = ALL1BITS >> align;
+	rmask = ALL1BITS << (-width & ALIGNMASK);
+	if (width <= BLITWIDTH) {
+		lmask &= rmask;
+		while (height > 0) {
+			image = *P0(p);
+			*P0(p) = (image & ~lmask) | ((image ^ ALL1BITS) & lmask);
+			image = *P1(p);
+			*P1(p) = (image & ~lmask) | ((image ^ ALL1BITS) & lmask);
+			image = *P2(p);
+			*P2(p) = (image & ~lmask) | ((image ^ ALL1BITS) & lmask);
+			image = *P3(p);
+			*P3(p) = (image & ~lmask) | ((image ^ ALL1BITS) & lmask);
+			p += scanspan;
+			height--;
+		}
+	} else {
+		u_int8_t *q = p;
+
+		while (height > 0) {
+			image = *P0(p);
+			*P0(p) = (image & ~lmask) | ((image ^ ALL1BITS) & lmask);
+			image = *P1(p);
+			*P1(p) = (image & ~lmask) | ((image ^ ALL1BITS) & lmask);
+			image = *P2(p);
+			*P2(p) = (image & ~lmask) | ((image ^ ALL1BITS) & lmask);
+			image = *P3(p);
+			*P3(p) = (image & ~lmask) | ((image ^ ALL1BITS) & lmask);
+
+			p += BYTESDONE;
+
+			image = *P0(p);
+			*P0(p) = ((image ^ ALL1BITS) & rmask) | (image & ~rmask);
+			image = *P1(p);
+			*P1(p) = ((image ^ ALL1BITS) & rmask) | (image & ~rmask);
+			image = *P2(p);
+			*P2(p) = ((image ^ ALL1BITS) & rmask) | (image & ~rmask);
+			image = *P3(p);
+			*P3(p) = ((image ^ ALL1BITS) & rmask) | (image & ~rmask);
+
+			p = (q += scanspan);
+			height--;
+		}
+	}
+	ri->ri_flg ^= RI_CURSOR;
+
+	return 0;
+}
+
+/*
+ * Blit a character at the specified co-ordinates
+ * - 4bpp version -
+ */
+int
+om_putchar4(void *cookie, int row, int startcol, u_int uc, long attr)
+{
+	struct rasops_info *ri = cookie;
+	u_int8_t *p;
+	int scanspan, startx, height, width, align, y;
+	u_int32_t lmask, rmask, glyph, glyphbg, fgpat, bgpat;
+	int i, fg, bg;
+	u_int8_t *fb;
+
+	scanspan = ri->ri_stride;
+	y = ri->ri_font->fontheight * row;
+	startx = ri->ri_font->fontwidth * startcol;
+	height = ri->ri_font->fontheight;
+	fb = (u_int8_t *)ri->ri_font->data +
+	    (uc - ri->ri_font->firstchar) * ri->ri_fontscale;
+	ri->ri_ops.unpack_attr(cookie, attr, &fg, &bg, NULL);
+
+	p = (u_int8_t *)ri->ri_bits + y * scanspan + ((startx / 32) * 4);
+	align = startx & ALIGNMASK;
+	width = ri->ri_font->fontwidth + align;
+	lmask = ALL1BITS >> align;
+	rmask = ALL1BITS << (-width & ALIGNMASK);
+	if (width <= BLITWIDTH) {
+		lmask &= rmask;
+		while (height > 0) {
+			glyph = 0;
+			for (i = ri->ri_font->stride; i != 0; i--)
+				glyph = (glyph << 8) | *fb++;
+			glyph <<= (4 - ri->ri_font->stride) * NBBY;
+			glyph = (glyph >> align);
+			glyphbg = glyph ^ ALL1BITS;
+
+			fgpat = (fg & 0x01) ? glyph : 0;
+			bgpat = (bg & 0x01) ? glyphbg : 0;
+			*P0(p) = (*P0(p) & ~lmask) | ((fgpat | bgpat) & lmask);
+			fgpat = (fg & 0x02) ? glyph : 0;
+			bgpat = (bg & 0x02) ? glyphbg : 0;
+			*P1(p) = (*P1(p) & ~lmask) | ((fgpat | bgpat) & lmask);
+			fgpat = (fg & 0x04) ? glyph : 0;
+			bgpat = (bg & 0x04) ? glyphbg : 0;
+			*P2(p) = (*P2(p) & ~lmask) | ((fgpat | bgpat) & lmask);
+			fgpat = (fg & 0x08) ? glyph : 0;
+			bgpat = (bg & 0x08) ? glyphbg : 0;
+			*P3(p) = (*P3(p) & ~lmask) | ((fgpat | bgpat) & lmask);
+
+			p += scanspan;
+			height--;
+		}
+	} else {
+		u_int8_t *q = p;
+		u_int32_t lhalf, rhalf;
+		u_int32_t lhalfbg, rhalfbg;
+
+		while (height > 0) {
+			glyph = 0;
+			for (i = ri->ri_font->stride; i != 0; i--)
+				glyph = (glyph << 8) | *fb++;
+			glyph <<= (4 - ri->ri_font->stride) * NBBY;
+			lhalf = (glyph >> align);
+			lhalfbg = lhalf ^ ALL1BITS;
+
+			fgpat = (fg & 0x01) ? lhalf : 0;
+			bgpat = (bg & 0x01) ? lhalfbg : 0;
+			*P0(p) = (*P0(p) & ~lmask) | ((fgpat | bgpat) & lmask);
+			fgpat = (fg & 0x02) ? lhalf : 0;
+			bgpat = (bg & 0x02) ? lhalfbg : 0;
+			*P1(p) = (*P1(p) & ~lmask) | ((fgpat | bgpat) & lmask);
+			fgpat = (fg & 0x04) ? lhalf : 0;
+			bgpat = (bg & 0x04) ? lhalfbg : 0;
+			*P2(p) = (*P2(p) & ~lmask) | ((fgpat | bgpat) & lmask);
+			fgpat = (fg & 0x08) ? lhalf : 0;
+			bgpat = (bg & 0x08) ? lhalfbg : 0;
+			*P3(p) = (*P3(p) & ~lmask) | ((fgpat | bgpat) & lmask);
+
+			p += BYTESDONE;
+
+			rhalf = (glyph << (BLITWIDTH - align));
+			rhalfbg = rhalf ^ ALL1BITS;
+
+			fgpat = (fg & 0x01) ? rhalf : 0;
+			bgpat = (bg & 0x01) ? rhalfbg : 0;
+			*P0(p) = ((fgpat | bgpat) & rmask) | (*P0(p) & ~rmask);
+			fgpat = (fg & 0x02) ? rhalf : 0;
+			bgpat = (bg & 0x02) ? rhalfbg : 0;
+			*P1(p) = ((fgpat | bgpat) & rmask) | (*P1(p) & ~rmask);
+			fgpat = (fg & 0x04) ? rhalf : 0;
+			bgpat = (bg & 0x04) ? rhalfbg : 0;
+			*P2(p) = ((fgpat | bgpat) & rmask) | (*P2(p) & ~rmask);
+			fgpat = (fg & 0x08) ? rhalf : 0;
+			bgpat = (bg & 0x08) ? rhalfbg : 0;
+			*P3(p) = ((fgpat | bgpat) & rmask) | (*P3(p) & ~rmask);
+
+			p = (q += scanspan);
+			height--;
+		}
+	}
+
+	return 0;
+}
 
 int
 om_windowmove4(struct rasops_info *ri, u_int16_t sx, u_int16_t sy,

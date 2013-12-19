@@ -52,8 +52,6 @@
 #define om_windowmove1	om_windowmove4
 
 /* wscons emulator operations */
-int	om_cursor(void *, int, int, int);
-int	om_putchar(void *, int, int, u_int, long);
 int	om_copycols(void *, int, int, int, int);
 int	om_copyrows(void *, int, int, int num);
 int	om_erasecols(void *, int, int, int, long);
@@ -64,13 +62,11 @@ int	om_allocattr(void *, int, int, int, long *);
 int	om_windowmove1(struct rasops_info *, u_int16_t, u_int16_t,
 		u_int16_t, u_int16_t, u_int16_t, u_int16_t, int16_t,
 		int16_t /* ignored */);
+int	om_windowmove4(struct rasops_info *, u_int16_t, u_int16_t,
+		u_int16_t, u_int16_t, u_int16_t, u_int16_t, int16_t,
+		int16_t /* ignored */);
 
-#define	ALL1BITS	(~0U)
-#define	ALL0BITS	(0U)
-#define	BLITWIDTH	(32)
-#define	ALIGNMASK	(0x1f)
-#define	BYTESDONE	(4)
-
+#if 0
 /*
  * Blit a character at the specified co-ordinates.
  */
@@ -186,6 +182,7 @@ om_putchar(void *cookie, int row, int startcol, u_int uc, long attr)
 
 	return 0;
 }
+#endif /* of 0 */
 
 int
 om_erasecols(void *cookie, int row, int col, int num, long attr)
@@ -270,6 +267,7 @@ om_copycols(void *cookie, int row, int src, int dst, int n)
 	return 0;
 }
 
+#if 0
 /*
  * Position|{enable|disable} the cursor at the specified location.
  */
@@ -362,6 +360,7 @@ om_cursor(void *cookie, int on, int row, int col)
 
 	return 0;
 }
+#endif /* of 0 */
 
 /*
  * Allocate attribute. We just pack these into an integer.
