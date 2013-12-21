@@ -76,17 +76,6 @@ struct bt458 {
 #define	OMFB_RAMDAC	0xC1100000	/* Bt454/Bt458 RAMDAC */
 #define	OMFB_SIZE	(0xB1300000 - 0xB1080000 + PAGE_SIZE)
 
-struct om_hwdevconfig {
-	int	dc_wid;			/* width of frame buffer */
-	int	dc_ht;			/* height of frame buffer */
-	int	dc_depth;		/* depth, bits per pixel */
-	int	dc_rowbytes;		/* bytes in a FB scan line */
-	int	dc_cmsize;		/* colormap size */
-	int	dc_depth_checked;	/* depth is checked or not */
-	vaddr_t	dc_videobase;		/* base of flat frame buffer */
-	struct rasops_info dc_ri;	/* raster blitter variables */
-};
-
 struct hwcmap {
 #define CMAP_SIZE 256
 	u_int8_t r[CMAP_SIZE];
@@ -117,10 +106,21 @@ static const struct {
 	{ 0xff, 0xff, 0xff},
 };
 
+struct om_hwdevconfig {
+	int	dc_wid;			/* width of frame buffer */
+	int	dc_ht;			/* height of frame buffer */
+	int	dc_depth;		/* depth, bits per pixel */
+	int	dc_rowbytes;		/* bytes in a FB scan line */
+	int	dc_depth_checked;	/* depth is really checked or not */
+	int	dc_cmsize;		/* colormap size */
+	struct hwcmap dc_cmap;		/* software copy of colormap */
+	vaddr_t	dc_videobase;		/* base of flat frame buffer */
+	struct rasops_info dc_ri;	/* raster blitter variables */
+};
+
 struct omfb_softc {
 	struct device sc_dev;		/* base device */
 	struct om_hwdevconfig *sc_dc;	/* device configuration */
-	struct hwcmap sc_cmap;		/* software copy of colormap */
 	int nscreens;
 };
 
@@ -228,10 +228,6 @@ omfbattach(parent, self, args)
 	}
 	printf(": %d x %d, %dbpp\n", sc->sc_dc->dc_wid, sc->sc_dc->dc_ht,
 		hwplanebits);
-
-	/* WHITE on BLACK */
-	memset(&sc->sc_cmap, 255, sizeof(struct hwcmap));
-	sc->sc_cmap.r[0] = sc->sc_cmap.g[0] = sc->sc_cmap.b[0] = 0;
 
 	waa.console = omfb_console;
 	waa.scrdata = &omfb_screenlist;
@@ -357,13 +353,13 @@ omgetcmap(sc, p)
 	if (index >= cmsize || count > cmsize - index)
 		return (EINVAL);
 
-	error = copyout(&sc->sc_cmap.r[index], p->red, count);
+	error = copyout(&sc->sc_dc->dc_cmap.r[index], p->red, count);
 	if (error != 0)
 		return (error);
-	error = copyout(&sc->sc_cmap.g[index], p->green, count);
+	error = copyout(&sc->sc_dc->dc_cmap.g[index], p->green, count);
 	if (error != 0)
 		return (error);
-	error = copyout(&sc->sc_cmap.b[index], p->blue, count);
+	error = copyout(&sc->sc_dc->dc_cmap.b[index], p->blue, count);
 	if (error != 0)
 		return (error);
 
@@ -375,6 +371,7 @@ omsetcmap(sc, p)
 	struct omfb_softc *sc;
 	struct wsdisplay_cmap *p;
 {
+	struct hwcmap cmap;
 	u_int index = p->index, count = p->count;
         unsigned int cmsize, i;
 	int error;
@@ -388,32 +385,36 @@ omsetcmap(sc, p)
 	if (index >= cmsize || count > cmsize - index)
 		return (EINVAL);
 
-	error = copyin(p->red, &sc->sc_cmap.r[index], count);
+	error = copyin(p->red, &cmap.r[index], count);
 	if (error != 0)
 		return (error);
-	error = copyin(p->green, &sc->sc_cmap.g[index], count);
+	error = copyin(p->green, &cmap.g[index], count);
 	if (error != 0)
 		return (error);
-	error = copyin(p->blue, &sc->sc_cmap.b[index], count);
+	error = copyin(p->blue, &cmap.b[index], count);
 	if (error != 0)
 		return (error);
+
+	memcpy(&sc->sc_dc->dc_cmap.r[index], &cmap.r[index], count);
+	memcpy(&sc->sc_dc->dc_cmap.g[index], &cmap.g[index], count);
+	memcpy(&sc->sc_dc->dc_cmap.b[index], &cmap.b[index], count);
 
 	if (hwplanebits == 4) {
 		struct bt454 *odac = (struct bt454 *)OMFB_RAMDAC;
 		odac->bt_addr = (u_int8_t)index;
 		for (i = index; i < index + count; i++) {
-			odac->bt_cmap = sc->sc_cmap.r[i];
-			odac->bt_cmap = sc->sc_cmap.g[i];
-			odac->bt_cmap = sc->sc_cmap.b[i];
+			odac->bt_cmap = sc->sc_dc->dc_cmap.r[i];
+			odac->bt_cmap = sc->sc_dc->dc_cmap.g[i];
+			odac->bt_cmap = sc->sc_dc->dc_cmap.b[i];
 		}
 	}
 	else if (hwplanebits == 8) {
 		struct bt458 *ndac = (struct bt458 *)OMFB_RAMDAC;
 		ndac->bt_addr = (u_int8_t)index;
 		for (i = index; i < index + count; i++) {
-			ndac->bt_cmap = sc->sc_cmap.r[i];
-			ndac->bt_cmap = sc->sc_cmap.g[i];
-			ndac->bt_cmap = sc->sc_cmap.b[i];
+			ndac->bt_cmap = sc->sc_dc->dc_cmap.r[i];
+			ndac->bt_cmap = sc->sc_dc->dc_cmap.g[i];
+			ndac->bt_cmap = sc->sc_dc->dc_cmap.b[i];
 		}
 	}
 	return (0);
@@ -482,10 +483,11 @@ omfb_getdevconfig(paddr, dc)
 	if ((hwplanebits == 1) || (hwplanebits == 4)) {
 		struct bt454 *odac = (struct bt454 *)OMFB_RAMDAC;
 
+		odac->bt_addr = 0;
 		for (i = 0; i < 16; i++) {
-			odac->bt_cmap = ansicmap[i].r;
-			odac->bt_cmap = ansicmap[i].g;
-			odac->bt_cmap = ansicmap[i].b;
+			odac->bt_cmap = dc->dc_cmap.r[i] = ansicmap[i].r;
+			odac->bt_cmap = dc->dc_cmap.g[i] = ansicmap[i].g;
+			odac->bt_cmap = dc->dc_cmap.b[i] = ansicmap[i].b;
 		}
 	} else if (hwplanebits == 8) {
 		struct bt458 *ndac = (struct bt458 *)OMFB_RAMDAC;
@@ -498,13 +500,13 @@ omfb_getdevconfig(paddr, dc)
 		ndac->bt_ctrl = 0x00; /* no test mode */
 #endif
 		ndac->bt_addr = 0;
-		ndac->bt_cmap = 0;
-		ndac->bt_cmap = 0;
-		ndac->bt_cmap = 0;
+		ndac->bt_cmap = dc->dc_cmap.r[0] = 0;
+		ndac->bt_cmap = dc->dc_cmap.g[0] = 0;
+		ndac->bt_cmap = dc->dc_cmap.b[0] = 0;
 		for (i = 1; i < 256; i++) {
-			ndac->bt_cmap = 255;
-			ndac->bt_cmap = 255;
-			ndac->bt_cmap = 255;
+			ndac->bt_cmap = dc->dc_cmap.r[i] = 255;
+			ndac->bt_cmap = dc->dc_cmap.g[i] = 255;
+			ndac->bt_cmap = dc->dc_cmap.b[i] = 255;
 		}
 	}
 

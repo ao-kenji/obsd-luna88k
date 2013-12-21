@@ -24,17 +24,12 @@
 /*
  * Helper macros
  */
-#if 0
-#define W(p) (*(u_int32_t *)(p))
-#define R(p) (*(u_int32_t *)((u_int8_t *)(p) + 0x40000))
-#else
 #define W(addr) ((u_int32_t *)(addr))
 #define R(addr) ((u_int32_t *)((u_int8_t *)(addr) + 0x40000))
 #define P0(addr) ((u_int32_t *)((u_int8_t *)(addr) +  0x40000))
 #define P1(addr) ((u_int32_t *)((u_int8_t *)(addr) +  0x80000))
 #define P2(addr) ((u_int32_t *)((u_int8_t *)(addr) +  0xC0000))
 #define P3(addr) ((u_int32_t *)((u_int8_t *)(addr) + 0x100000))
-#endif
 
 /*
  * Replacement Rules (rops) (derived from hp300)
