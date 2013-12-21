@@ -82,6 +82,7 @@ struct om_hwdevconfig {
 	int	dc_depth;		/* depth, bits per pixel */
 	int	dc_rowbytes;		/* bytes in a FB scan line */
 	int	dc_cmsize;		/* colormap size */
+	int	dc_depth_checked;	/* depth is checked or not */
 	vaddr_t	dc_videobase;		/* base of flat frame buffer */
 	struct rasops_info dc_ri;	/* raster blitter variables */
 };
@@ -205,26 +206,6 @@ omfbmatch(parent, cf, aux)
 	if (hwplanebits == 0)
 		return (0);
 #endif
-
-	/*
-	 * Check how many planes we have.  This is for 1, 4, and 8 bpp
-	 * boards, must be checked different way for 24 bpp board...
-	 */
-	if (hwplanebits > 0) {
-		int i;
-		u_int32_t *max, save;
-
-		for (i = 0; i < 8; i++) {
-			max = (u_int32_t *)trunc_page(OMFB_FB_RADDR
-				+ OMFB_FB_PLANESIZE * i);
-			save = *max;
-			*(volatile uint32_t *)max = 0x5a5a5a5a;
-			if (*max != 0x5a5a5a5a)
-				break;
-			*max = save;
-		}
-		hwplanebits = i;	/* should be 1, 4, or 8 */
-	}
 	return (1);
 }
 
@@ -450,6 +431,29 @@ omfb_getdevconfig(paddr, dc)
 		u_int32_t u;
 	} rfcnt;
 
+	/*
+	 * If this is the first time call, check how many planes we really
+	 * have.  This method is for 1, 4, and 8 bpp boards, must be checked
+	 * different way for 24 bpp board...
+	 */
+	if ((hwplanebits > 0) && (dc->dc_depth_checked == 0)) {
+		int i;
+		u_int32_t *max, save;
+
+		for (i = 0; i < 8; i++) {
+			max = (u_int32_t *)trunc_page(OMFB_FB_RADDR
+				+ OMFB_FB_PLANESIZE * i);
+			save = *max;
+			*(volatile uint32_t *)max = 0x5a5a5a5a;
+			if (*max != 0x5a5a5a5a)
+				break;
+			*max = save;
+		}
+		hwplanebits = i;	/* should be 1, 4, or 8 */
+
+		dc->dc_depth_checked = 1;
+	}
+
 #if 1	/* Workaround for making Xorg mono server work */
 	switch (hwplanebits) {
 	case 8:
@@ -531,13 +535,19 @@ omfb_getdevconfig(paddr, dc)
 
 	omfb_stdscreen.ncols = ri->ri_cols;
 	omfb_stdscreen.nrows = ri->ri_rows;
-#if 0
-	ri->ri_ops.cursor = om_cursor1;
-	ri->ri_ops.putchar = om_putchar1;
-#else
-	ri->ri_ops.cursor = om_cursor4;
-	ri->ri_ops.putchar = om_putchar4;
-#endif
+
+	switch (hwplanebits) {
+	default:
+	case 1:
+		ri->ri_ops.cursor = om_cursor1;
+		ri->ri_ops.putchar = om_putchar1;
+		break;
+	case 4:
+		ri->ri_ops.cursor = om_cursor4;
+		ri->ri_ops.putchar = om_putchar4;
+		break;
+	}
+
 	ri->ri_ops.copycols = om_copycols;
 	ri->ri_ops.erasecols = om_erasecols;
 	ri->ri_ops.copyrows = om_copyrows;
