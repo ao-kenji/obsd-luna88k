@@ -62,6 +62,8 @@ int	om_allocattr(void *, int, int, int, long *);
 int	om_windowmove1(struct rasops_info *, u_int16_t, u_int16_t,
 		u_int16_t, u_int16_t, u_int16_t, u_int16_t, int16_t,
 		int16_t /* ignored */);
+
+/* internal functions (for 4bpp, in omrasops4.c) */
 int	om_windowmove4(struct rasops_info *, u_int16_t, u_int16_t,
 		u_int16_t, u_int16_t, u_int16_t, u_int16_t, int16_t,
 		int16_t /* ignored */);
