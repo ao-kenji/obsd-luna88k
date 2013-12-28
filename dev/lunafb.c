@@ -500,13 +500,16 @@ omfb_getdevconfig(paddr, dc)
 		ndac->bt_ctrl = 0x00; /* no test mode */
 #endif
 		ndac->bt_addr = 0;
-		ndac->bt_cmap = dc->dc_cmap.r[0] = 0;
-		ndac->bt_cmap = dc->dc_cmap.g[0] = 0;
-		ndac->bt_cmap = dc->dc_cmap.b[0] = 0;
-		for (i = 1; i < 256; i++) {
-			ndac->bt_cmap = dc->dc_cmap.r[i] = 255;
-			ndac->bt_cmap = dc->dc_cmap.g[i] = 255;
-			ndac->bt_cmap = dc->dc_cmap.b[i] = 255;
+		/* ANSI colors for the first 16 palettes. */
+		for (i = 0; i < 16; i++) {
+			ndac->bt_cmap = dc->dc_cmap.r[i] = ansicmap[i].r;
+			ndac->bt_cmap = dc->dc_cmap.g[i] = ansicmap[i].g;
+			ndac->bt_cmap = dc->dc_cmap.b[i] = ansicmap[i].b;
+		}
+		for (; i < 256; i++) {
+			ndac->bt_cmap = dc->dc_cmap.r[i] = 0;
+			ndac->bt_cmap = dc->dc_cmap.g[i] = 0;
+			ndac->bt_cmap = dc->dc_cmap.b[i] = 0;
 		}
 	}
 
@@ -545,6 +548,7 @@ omfb_getdevconfig(paddr, dc)
 		ri->ri_ops.putchar = om_putchar1;
 		break;
 	case 4:
+	case 8:
 		ri->ri_ops.cursor = om_cursor4;
 		ri->ri_ops.putchar = om_putchar4;
 		break;
