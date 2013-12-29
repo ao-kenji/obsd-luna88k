@@ -492,24 +492,25 @@ omfb_getdevconfig(paddr, dc)
 	} else if (hwplanebits == 8) {
 		struct bt458 *ndac = (struct bt458 *)OMFB_RAMDAC;
 
-#if 0		/* This doesn't work.  Don't touch ROM setting for now. */
+		/* Initialize the Bt458 */
 		ndac->bt_addr = 0x04;
 		ndac->bt_ctrl = 0xff; /* all planes will be read */
+		ndac->bt_addr = 0x05;
 		ndac->bt_ctrl = 0x00; /* all planes have non-blink */
-		ndac->bt_ctrl = 0x43; /* pallete enabled, ovly plane */
+		ndac->bt_addr = 0x06;
+		ndac->bt_ctrl = 0x40; /* palette enabled, ovly plane disabled */
+		ndac->bt_addr = 0x07;
 		ndac->bt_ctrl = 0x00; /* no test mode */
-#endif
+
+		/*
+		 * Set ANSI 16 colors.  We only supports 4bpp console right
+		 * now, repeat 16 colors in 256 palette.
+		 */
 		ndac->bt_addr = 0;
-		/* ANSI colors for the first 16 palettes. */
-		for (i = 0; i < 16; i++) {
-			ndac->bt_cmap = dc->dc_cmap.r[i] = ansicmap[i].r;
-			ndac->bt_cmap = dc->dc_cmap.g[i] = ansicmap[i].g;
-			ndac->bt_cmap = dc->dc_cmap.b[i] = ansicmap[i].b;
-		}
-		for (; i < 256; i++) {
-			ndac->bt_cmap = dc->dc_cmap.r[i] = 0;
-			ndac->bt_cmap = dc->dc_cmap.g[i] = 0;
-			ndac->bt_cmap = dc->dc_cmap.b[i] = 0;
+		for (i = 0; i < 256; i++) {
+			ndac->bt_cmap = dc->dc_cmap.r[i] = ansicmap[i % 16].r;
+			ndac->bt_cmap = dc->dc_cmap.g[i] = ansicmap[i % 16].g;
+			ndac->bt_cmap = dc->dc_cmap.b[i] = ansicmap[i % 16].b;
 		}
 	}
 
