@@ -139,7 +139,8 @@ int	om_copycols(void *, int, int, int, int);
 int	om_copyrows(void *, int, int, int num);
 int	om_erasecols(void *, int, int, int, long);
 int	om_eraserows(void *, int, int, long);
-int	om_allocattr(void *, int, int, int, long *);
+/* in src/sys/dev/rasops/rasops.c */
+int	rasops_alloc_cattr(void *, int, int, int, long *);
 
 struct wsscreen_descr omfb_stdscreen = {
 	"std"
@@ -539,36 +540,38 @@ omfb_getdevconfig(paddr, dc)
 
 	rasops_init(ri, 35, 80);
 
+	ri->ri_ops.copycols = om_copycols;
+	ri->ri_ops.erasecols = om_erasecols;
+	ri->ri_ops.copyrows = om_copyrows;
+	ri->ri_ops.eraserows = om_eraserows;
 	omfb_stdscreen.ncols = ri->ri_cols;
 	omfb_stdscreen.nrows = ri->ri_rows;
+	omfb_stdscreen.textops = &ri->ri_ops;
+	omfb_stdscreen.fontwidth = ri->ri_font->fontwidth;
+	omfb_stdscreen.fontheight = ri->ri_font->fontheight;
 
 	switch (hwplanebits) {
 	default:
 	case 1:
 		ri->ri_ops.cursor = om_cursor1;
 		ri->ri_ops.putchar = om_putchar1;
+		omfb_stdscreen.capabilities
+			= ri->ri_caps & ~WSSCREEN_UNDERLINE;
 		break;
 	case 4:
 	case 8:
 		ri->ri_ops.cursor = om_cursor4;
 		ri->ri_ops.putchar = om_putchar4;
+		/*
+		 * Since we set ri->ri_depth == 1, rasops_init() set
+		 * rasops_alloc_mattr for us.  But we want to use
+		 * the color version, rasops_alloc_cattr.
+		 */
+		ri->ri_ops.alloc_attr = rasops_alloc_cattr;
+		omfb_stdscreen.capabilities
+			= WSSCREEN_HILIT | WSSCREEN_WSCOLORS | WSSCREEN_REVERSE;
 		break;
 	}
-
-	ri->ri_ops.copycols = om_copycols;
-	ri->ri_ops.erasecols = om_erasecols;
-	ri->ri_ops.copyrows = om_copyrows;
-	ri->ri_ops.eraserows = om_eraserows;
-	ri->ri_ops.alloc_attr = om_allocattr;
-	omfb_stdscreen.textops = &ri->ri_ops;
-	omfb_stdscreen.fontwidth = ri->ri_font->fontwidth;
-	omfb_stdscreen.fontheight = ri->ri_font->fontheight;
-#if 0
-	omfb_stdscreen.capabilities = ri->ri_caps & ~WSSCREEN_UNDERLINE;
-#else
-	omfb_stdscreen.capabilities
-		= WSSCREEN_HILIT | WSSCREEN_WSCOLORS | WSSCREEN_REVERSE;
-#endif
 }
 
 int

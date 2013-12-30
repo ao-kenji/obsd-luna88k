@@ -56,7 +56,6 @@ int	om_copycols(void *, int, int, int, int);
 int	om_copyrows(void *, int, int, int num);
 int	om_erasecols(void *, int, int, int, long);
 int	om_eraserows(void *, int, int, long);
-int	om_allocattr(void *, int, int, int, long *);
 
 /* internal functions (for 1bpp, in omrasops1.c) */
 int	om_windowmove1(struct rasops_info *, u_int16_t, u_int16_t,
@@ -149,31 +148,4 @@ om_copycols(void *cookie, int row, int src, int dst, int n)
 		n, ri->ri_font->fontheight, RR_COPY, 0xff);
 
 	return 0;
-}
-
-/*
- * Allocate attribute. We just pack these into an integer.
- */
-int
-om_allocattr(void *id, int fg, int bg, int flags, long *attrp)
-{
-	if ((flags & WSATTR_BLINK) != 0)
-		return EINVAL;
-	if ((flags & WSATTR_WSCOLORS) == 0) {
-		fg = WSCOL_WHITE;
-		bg = WSCOL_BLACK;
-	}
-
-	if ((flags & WSATTR_REVERSE) != 0) {
-		int swap;
-		swap = fg;
-		fg = bg;
-		bg = swap;
-	}
-
-	if ((flags & WSATTR_HILIT) != 0)
-		fg += 8;
-
-	*attrp = (fg << 24) | (bg << 16);
-        return 0;
 }
