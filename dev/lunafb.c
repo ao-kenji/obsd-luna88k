@@ -116,6 +116,9 @@ struct om_hwdevconfig {
 	struct hwcmap dc_cmap;		/* software copy of colormap */
 	vaddr_t	dc_videobase;		/* base of flat frame buffer */
 	struct rasops_info dc_ri;	/* raster blitter variables */
+	/* block move function, depend on depth */
+	int	(*dc_bmv)(struct rasops_info *, u_int16_t, u_int16_t, u_int16_t,
+			u_int16_t, u_int16_t, u_int16_t, int16_t, int16_t);
 };
 
 struct omfb_softc {
@@ -139,6 +142,11 @@ int	om_copycols(void *, int, int, int, int);
 int	om_copyrows(void *, int, int, int num);
 int	om_erasecols(void *, int, int, int, long);
 int	om_eraserows(void *, int, int, long);
+/* in omrasops[14].c */
+int	om_windowmove1(struct rasops_info *, u_int16_t, u_int16_t, u_int16_t,
+		u_int16_t, u_int16_t, u_int16_t, int16_t, int16_t);
+int	om_windowmove4(struct rasops_info *, u_int16_t, u_int16_t, u_int16_t,
+		u_int16_t, u_int16_t, u_int16_t, int16_t, int16_t);
 /* in src/sys/dev/rasops/rasops.c */
 int	rasops_alloc_cattr(void *, int, int, int, long *);
 
@@ -553,6 +561,7 @@ omfb_getdevconfig(paddr, dc)
 	switch (hwplanebits) {
 	default:
 	case 1:
+		dc->dc_bmv = om_windowmove1;
 		ri->ri_ops.cursor = om_cursor1;
 		ri->ri_ops.putchar = om_putchar1;
 		omfb_stdscreen.capabilities
@@ -560,6 +569,7 @@ omfb_getdevconfig(paddr, dc)
 		break;
 	case 4:
 	case 8:
+		dc->dc_bmv = om_windowmove4;
 		ri->ri_ops.cursor = om_cursor4;
 		ri->ri_ops.putchar = om_putchar4;
 		/*
