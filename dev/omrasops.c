@@ -49,51 +49,41 @@
 
 #include <luna88k/dev/omrasops.h>
 
-struct hwcmap {
-#define CMAP_SIZE 256
-	u_int8_t r[CMAP_SIZE];
-	u_int8_t g[CMAP_SIZE];
-	u_int8_t b[CMAP_SIZE];
-};
-
-struct om_hwdevconfig {
-	int	dc_wid;			/* width of frame buffer */
-	int	dc_ht;			/* height of frame buffer */
-	int	dc_depth;		/* depth, bits per pixel */
-	int	dc_rowbytes;		/* bytes in a FB scan line */
-	int	dc_depth_checked;	/* depth is really checked or not */
-	int	dc_cmsize;		/* colormap size */
-	struct hwcmap dc_cmap;		/* software copy of colormap */
-	vaddr_t	dc_videobase;		/* base of flat frame buffer */
-	struct rasops_info dc_ri;	/* raster blitter variables */
-	/* block move function, depend on depth */
-	int	(*dc_bmv)(struct rasops_info *, u_int16_t, u_int16_t, u_int16_t,
-			u_int16_t, u_int16_t, u_int16_t, int16_t, int16_t);
-};
-
-#define om_windowmove1 om_windowmove4
-
 /* wscons emulator operations */
 int	om_copycols(void *, int, int, int, int);
 int	om_copyrows(void *, int, int, int num);
 int	om_erasecols(void *, int, int, int, long);
 int	om_eraserows(void *, int, int, long);
+int	om1_cursor(void *, int, int, int);
+int	om1_putchar(void *, int, int, u_int, long);
+int	om4_cursor(void *, int, int, int);
+int	om4_putchar(void *, int, int, u_int, long);
 
-/* internal functions (for 1bpp, in omrasops1.c) */
-int	om_windowmove1(struct rasops_info *, u_int16_t, u_int16_t,
-		u_int16_t, u_int16_t, u_int16_t, u_int16_t, int16_t,
-		int16_t /* ignored */);
+/* set up functions */
+void	setup_omrasops1(struct rasops_info *);
+void	setup_omrasops4(struct rasops_info *);
 
-/* internal functions (for 4bpp, in omrasops4.c) */
-int	om_windowmove4(struct rasops_info *, u_int16_t, u_int16_t,
-		u_int16_t, u_int16_t, u_int16_t, u_int16_t, int16_t,
-		int16_t /* ignored */);
+/* internal functions for 1bpp/4bpp */
+int	om1_windowmove(struct rasops_info *, u_int16_t, u_int16_t, u_int16_t,
+		u_int16_t, u_int16_t, u_int16_t, int16_t, int16_t);
+int	om4_windowmove(struct rasops_info *, u_int16_t, u_int16_t, u_int16_t,
+		u_int16_t, u_int16_t, u_int16_t, int16_t, int16_t);
 
+/* MI function in src/sys/dev/rasops/rasops.c */
+int     rasops_alloc_cattr(void *, int, int, int, long *);
+
+static int (*om_windowmove)(struct rasops_info *, u_int16_t, u_int16_t,
+		u_int16_t, u_int16_t, u_int16_t, u_int16_t, int16_t, int16_t);
+
+extern struct wsscreen_descr omfb_stdscreen;
+
+/*
+ * wscons emulops functions
+ */
 int
 om_erasecols(void *cookie, int row, int col, int num, long attr)
 {
 	struct rasops_info *ri = cookie;
-	struct om_hwdevconfig *hw = ri->ri_hw;
 	int fg, bg;
 	int snum, scol, srow;
 
@@ -107,7 +97,7 @@ om_erasecols(void *cookie, int row, int col, int num, long attr)
 	 * If this is too tricky for the simple raster ops engine,
 	 * pass the fun to rasops.
 	 */
-	if ((*hw->dc_bmv)(ri, scol, srow, scol, srow, snum,
+	if ((*om_windowmove)(ri, scol, srow, scol, srow, snum,
 	    ri->ri_font->fontheight, RR_CLEAR, 0xff ^ bg) != 0)
 		rasops_erasecols(cookie, row, col, num, attr);
 
@@ -118,7 +108,6 @@ int
 om_eraserows(void *cookie, int row, int num, long attr)
 {
 	struct rasops_info *ri = cookie;
-	struct om_hwdevconfig *hw = ri->ri_hw;
 	int fg, bg;
 	int srow, snum;
 	int rc;
@@ -127,12 +116,12 @@ om_eraserows(void *cookie, int row, int num, long attr)
 	bg ^= 0xff;
 
 	if (num == ri->ri_rows && (ri->ri_flg & RI_FULLCLEAR)) {
-		rc = (*hw->dc_bmv)(ri, 0, 0, 0, 0, ri->ri_width, ri->ri_height,
-		    RR_CLEAR, bg);
+		rc = (*om_windowmove)(ri, 0, 0, 0, 0, ri->ri_width,
+			ri->ri_height, RR_CLEAR, bg);
 	} else {
 		srow = row * ri->ri_font->fontheight + ri->ri_yorigin;
 		snum = num * ri->ri_font->fontheight;
-		rc = (*hw->dc_bmv)(ri, ri->ri_xorigin, srow, ri->ri_xorigin,
+		rc = (*om_windowmove)(ri, ri->ri_xorigin, srow, ri->ri_xorigin,
 		    srow, ri->ri_emuwidth, snum, RR_CLEAR, bg);
 	}
 	if (rc != 0)
@@ -145,13 +134,12 @@ int
 om_copyrows(void *cookie, int src, int dst, int n)
 {
 	struct rasops_info *ri = cookie;
-	struct om_hwdevconfig *hw = ri->ri_hw;
 
 	n   *= ri->ri_font->fontheight;
 	src *= ri->ri_font->fontheight;
 	dst *= ri->ri_font->fontheight;
 
-	(*hw->dc_bmv)(ri, ri->ri_xorigin, ri->ri_yorigin + src,
+	(*om_windowmove)(ri, ri->ri_xorigin, ri->ri_yorigin + src,
 		ri->ri_xorigin, ri->ri_yorigin + dst,
 		ri->ri_emuwidth, n, RR_COPY, 0xff);
 
@@ -162,16 +150,359 @@ int
 om_copycols(void *cookie, int row, int src, int dst, int n)
 {
 	struct rasops_info *ri = cookie;
-	struct om_hwdevconfig *hw = ri->ri_hw;
 
 	n   *= ri->ri_font->fontwidth;
 	src *= ri->ri_font->fontwidth;
 	dst *= ri->ri_font->fontwidth;
 	row *= ri->ri_font->fontheight;
 
-	(*hw->dc_bmv)(ri, ri->ri_xorigin + src, ri->ri_yorigin + row,
+	(*om_windowmove)(ri, ri->ri_xorigin + src, ri->ri_yorigin + row,
 		ri->ri_xorigin + dst, ri->ri_yorigin + row,
 		n, ri->ri_font->fontheight, RR_COPY, 0xff);
 
 	return 0;
+}
+
+/*
+ * Position|{enable|disable} the cursor at the specified location.
+ * - 1bpp version -
+ */
+int
+om1_cursor(void *cookie, int on, int row, int col)
+{
+	struct rasops_info *ri = cookie;
+	u_int8_t *p;
+	int scanspan, startx, height, width, align, y;
+	u_int32_t lmask, rmask, image;
+
+	if (!on) {
+		/* make sure it's on */
+		if ((ri->ri_flg & RI_CURSOR) == 0)
+			return 0;
+
+		row = ri->ri_crow;
+		col = ri->ri_ccol;
+	} else {
+		/* unpaint the old copy. */
+		ri->ri_crow = row;
+		ri->ri_ccol = col;
+	}
+
+	scanspan = ri->ri_stride;
+	y = ri->ri_font->fontheight * row;
+	startx = ri->ri_font->fontwidth * col;
+	height = ri->ri_font->fontheight;
+
+	p = (u_int8_t *)ri->ri_bits + y * scanspan + ((startx / 32) * 4);
+	align = startx & ALIGNMASK;
+	width = ri->ri_font->fontwidth + align;
+	lmask = ALL1BITS >> align;
+	rmask = ALL1BITS << (-width & ALIGNMASK);
+	if (width <= BLITWIDTH) {
+		lmask &= rmask;
+		while (height > 0) {
+			image = *R(p);
+			*W(p) = (image & ~lmask) | ((image ^ ALL1BITS) & lmask);
+			p += scanspan;
+			height--;
+		}
+	} else {
+		u_int8_t *q = p;
+
+		while (height > 0) {
+			image = *R(p);
+			*W(p) = (image & ~lmask) | ((image ^ ALL1BITS) & lmask);
+			p += BYTESDONE;
+
+			image = *R(p);
+			*W(p) = ((image ^ ALL1BITS) & rmask) | (image & ~rmask);
+			p = (q += scanspan);
+			height--;
+		}
+	}
+	ri->ri_flg ^= RI_CURSOR;
+
+	return 0;
+}
+
+/*
+ * Blit a character at the specified co-ordinates.
+ * - 1bpp version -
+ */
+int
+om1_putchar(void *cookie, int row, int startcol, u_int uc, long attr)
+{
+	struct rasops_info *ri = cookie;
+	u_int8_t *p;
+	int scanspan, startx, height, width, align, y;
+	u_int32_t lmask, rmask, glyph, inverse;
+	int i, fg, bg;
+	u_int8_t *fb;
+
+	scanspan = ri->ri_stride;
+	y = ri->ri_font->fontheight * row;
+	startx = ri->ri_font->fontwidth * startcol;
+	height = ri->ri_font->fontheight;
+	fb = (u_int8_t *)ri->ri_font->data +
+	    (uc - ri->ri_font->firstchar) * ri->ri_fontscale;
+	ri->ri_ops.unpack_attr(cookie, attr, &fg, &bg, NULL);
+	inverse = (bg != 0) ? ALL1BITS : ALL0BITS;
+
+	p = (u_int8_t *)ri->ri_bits + y * scanspan + ((startx / 32) * 4);
+	align = startx & ALIGNMASK;
+	width = ri->ri_font->fontwidth + align;
+	lmask = ALL1BITS >> align;
+	rmask = ALL1BITS << (-width & ALIGNMASK);
+	if (width <= BLITWIDTH) {
+		lmask &= rmask;
+		while (height > 0) {
+			glyph = 0;
+			for (i = ri->ri_font->stride; i != 0; i--)
+				glyph = (glyph << 8) | *fb++;
+			glyph <<= (4 - ri->ri_font->stride) * NBBY;
+			glyph = (glyph >> align) ^ inverse;
+			*W(p) = (*R(p) & ~lmask) | (glyph & lmask);
+			p += scanspan;
+			height--;
+		}
+	} else {
+		u_int8_t *q = p;
+		u_int32_t lhalf, rhalf;
+
+		while (height > 0) {
+			glyph = 0;
+			for (i = ri->ri_font->stride; i != 0; i--)
+				glyph = (glyph << 8) | *fb++;
+			glyph <<= (4 - ri->ri_font->stride) * NBBY;
+			lhalf = (glyph >> align) ^ inverse;
+			*W(p) = (*R(p) & ~lmask) | (lhalf & lmask);
+
+			p += BYTESDONE;
+
+			rhalf = (glyph << (BLITWIDTH - align)) ^ inverse;
+			*W(p) = (rhalf & rmask) | (*R(p) & ~rmask);
+
+			p = (q += scanspan);
+			height--;
+		}
+	}
+
+	return 0;
+}
+
+/*
+ * Position|{enable|disable} the cursor at the specified location
+ * - 4bpp version -
+ */
+int
+om4_cursor(void *cookie, int on, int row, int col)
+{
+	struct rasops_info *ri = cookie;
+	u_int8_t *p;
+	int scanspan, startx, height, width, align, y;
+	u_int32_t lmask, rmask, image;
+
+	if (!on) {
+		/* make sure it's on */
+		if ((ri->ri_flg & RI_CURSOR) == 0)
+			return 0;
+
+		row = ri->ri_crow;
+		col = ri->ri_ccol;
+	} else {
+		/* unpaint the old copy. */
+		ri->ri_crow = row;
+		ri->ri_ccol = col;
+	}
+
+	scanspan = ri->ri_stride;
+	y = ri->ri_font->fontheight * row;
+	startx = ri->ri_font->fontwidth * col;
+	height = ri->ri_font->fontheight;
+
+	p = (u_int8_t *)ri->ri_bits + y * scanspan + ((startx / 32) * 4);
+	align = startx & ALIGNMASK;
+	width = ri->ri_font->fontwidth + align;
+	lmask = ALL1BITS >> align;
+	rmask = ALL1BITS << (-width & ALIGNMASK);
+	if (width <= BLITWIDTH) {
+		lmask &= rmask;
+		while (height > 0) {
+			image = *P0(p);
+			*P0(p) = (image & ~lmask) | ((image ^ ALL1BITS) & lmask);
+			image = *P1(p);
+			*P1(p) = (image & ~lmask) | ((image ^ ALL1BITS) & lmask);
+			image = *P2(p);
+			*P2(p) = (image & ~lmask) | ((image ^ ALL1BITS) & lmask);
+			image = *P3(p);
+			*P3(p) = (image & ~lmask) | ((image ^ ALL1BITS) & lmask);
+			p += scanspan;
+			height--;
+		}
+	} else {
+		u_int8_t *q = p;
+
+		while (height > 0) {
+			image = *P0(p);
+			*P0(p) = (image & ~lmask) | ((image ^ ALL1BITS) & lmask);
+			image = *P1(p);
+			*P1(p) = (image & ~lmask) | ((image ^ ALL1BITS) & lmask);
+			image = *P2(p);
+			*P2(p) = (image & ~lmask) | ((image ^ ALL1BITS) & lmask);
+			image = *P3(p);
+			*P3(p) = (image & ~lmask) | ((image ^ ALL1BITS) & lmask);
+
+			p += BYTESDONE;
+
+			image = *P0(p);
+			*P0(p) = ((image ^ ALL1BITS) & rmask) | (image & ~rmask);
+			image = *P1(p);
+			*P1(p) = ((image ^ ALL1BITS) & rmask) | (image & ~rmask);
+			image = *P2(p);
+			*P2(p) = ((image ^ ALL1BITS) & rmask) | (image & ~rmask);
+			image = *P3(p);
+			*P3(p) = ((image ^ ALL1BITS) & rmask) | (image & ~rmask);
+
+			p = (q += scanspan);
+			height--;
+		}
+	}
+	ri->ri_flg ^= RI_CURSOR;
+
+	return 0;
+}
+
+/*
+ * Blit a character at the specified co-ordinates
+ * - 4bpp version -
+ */
+int
+om4_putchar(void *cookie, int row, int startcol, u_int uc, long attr)
+{
+	struct rasops_info *ri = cookie;
+	u_int8_t *p;
+	int scanspan, startx, height, width, align, y;
+	u_int32_t lmask, rmask, glyph, glyphbg, fgpat, bgpat;
+	int i, fg, bg;
+	u_int8_t *fb;
+
+	scanspan = ri->ri_stride;
+	y = ri->ri_font->fontheight * row;
+	startx = ri->ri_font->fontwidth * startcol;
+	height = ri->ri_font->fontheight;
+	fb = (u_int8_t *)ri->ri_font->data +
+	    (uc - ri->ri_font->firstchar) * ri->ri_fontscale;
+	ri->ri_ops.unpack_attr(cookie, attr, &fg, &bg, NULL);
+
+	p = (u_int8_t *)ri->ri_bits + y * scanspan + ((startx / 32) * 4);
+	align = startx & ALIGNMASK;
+	width = ri->ri_font->fontwidth + align;
+	lmask = ALL1BITS >> align;
+	rmask = ALL1BITS << (-width & ALIGNMASK);
+	if (width <= BLITWIDTH) {
+		lmask &= rmask;
+		while (height > 0) {
+			glyph = 0;
+			for (i = ri->ri_font->stride; i != 0; i--)
+				glyph = (glyph << 8) | *fb++;
+			glyph <<= (4 - ri->ri_font->stride) * NBBY;
+			glyph = (glyph >> align);
+			glyphbg = glyph ^ ALL1BITS;
+
+			fgpat = (fg & 0x01) ? glyph : 0;
+			bgpat = (bg & 0x01) ? glyphbg : 0;
+			*P0(p) = (*P0(p) & ~lmask) | ((fgpat | bgpat) & lmask);
+			fgpat = (fg & 0x02) ? glyph : 0;
+			bgpat = (bg & 0x02) ? glyphbg : 0;
+			*P1(p) = (*P1(p) & ~lmask) | ((fgpat | bgpat) & lmask);
+			fgpat = (fg & 0x04) ? glyph : 0;
+			bgpat = (bg & 0x04) ? glyphbg : 0;
+			*P2(p) = (*P2(p) & ~lmask) | ((fgpat | bgpat) & lmask);
+			fgpat = (fg & 0x08) ? glyph : 0;
+			bgpat = (bg & 0x08) ? glyphbg : 0;
+			*P3(p) = (*P3(p) & ~lmask) | ((fgpat | bgpat) & lmask);
+
+			p += scanspan;
+			height--;
+		}
+	} else {
+		u_int8_t *q = p;
+		u_int32_t lhalf, rhalf;
+		u_int32_t lhalfbg, rhalfbg;
+
+		while (height > 0) {
+			glyph = 0;
+			for (i = ri->ri_font->stride; i != 0; i--)
+				glyph = (glyph << 8) | *fb++;
+			glyph <<= (4 - ri->ri_font->stride) * NBBY;
+			lhalf = (glyph >> align);
+			lhalfbg = lhalf ^ ALL1BITS;
+
+			fgpat = (fg & 0x01) ? lhalf : 0;
+			bgpat = (bg & 0x01) ? lhalfbg : 0;
+			*P0(p) = (*P0(p) & ~lmask) | ((fgpat | bgpat) & lmask);
+			fgpat = (fg & 0x02) ? lhalf : 0;
+			bgpat = (bg & 0x02) ? lhalfbg : 0;
+			*P1(p) = (*P1(p) & ~lmask) | ((fgpat | bgpat) & lmask);
+			fgpat = (fg & 0x04) ? lhalf : 0;
+			bgpat = (bg & 0x04) ? lhalfbg : 0;
+			*P2(p) = (*P2(p) & ~lmask) | ((fgpat | bgpat) & lmask);
+			fgpat = (fg & 0x08) ? lhalf : 0;
+			bgpat = (bg & 0x08) ? lhalfbg : 0;
+			*P3(p) = (*P3(p) & ~lmask) | ((fgpat | bgpat) & lmask);
+
+			p += BYTESDONE;
+
+			rhalf = (glyph << (BLITWIDTH - align));
+			rhalfbg = rhalf ^ ALL1BITS;
+
+			fgpat = (fg & 0x01) ? rhalf : 0;
+			bgpat = (bg & 0x01) ? rhalfbg : 0;
+			*P0(p) = ((fgpat | bgpat) & rmask) | (*P0(p) & ~rmask);
+			fgpat = (fg & 0x02) ? rhalf : 0;
+			bgpat = (bg & 0x02) ? rhalfbg : 0;
+			*P1(p) = ((fgpat | bgpat) & rmask) | (*P1(p) & ~rmask);
+			fgpat = (fg & 0x04) ? rhalf : 0;
+			bgpat = (bg & 0x04) ? rhalfbg : 0;
+			*P2(p) = ((fgpat | bgpat) & rmask) | (*P2(p) & ~rmask);
+			fgpat = (fg & 0x08) ? rhalf : 0;
+			bgpat = (bg & 0x08) ? rhalfbg : 0;
+			*P3(p) = ((fgpat | bgpat) & rmask) | (*P3(p) & ~rmask);
+
+			p = (q += scanspan);
+			height--;
+		}
+	}
+
+	return 0;
+}
+
+/*
+ * After calling rasops_init(), set up our depth-depend emulops,
+ * block move function and capabilities.
+ */
+void
+setup_omrasops1(struct rasops_info *ri)
+{
+	om_windowmove = om1_windowmove;
+	ri->ri_ops.cursor  = om1_cursor;
+	ri->ri_ops.putchar = om1_putchar;
+	omfb_stdscreen.capabilities
+		= ri->ri_caps & ~WSSCREEN_UNDERLINE;
+}
+
+void
+setup_omrasops4(struct rasops_info *ri)
+{
+	om_windowmove = om4_windowmove;
+	ri->ri_ops.cursor  = om4_cursor;
+	ri->ri_ops.putchar = om4_putchar;
+	omfb_stdscreen.capabilities
+		= WSSCREEN_HILIT | WSSCREEN_WSCOLORS | WSSCREEN_REVERSE;
+	/*
+	 * Since we set ri->ri_depth == 1, rasops_init() set
+	 * rasops_alloc_mattr for us.  But we use the color version,
+	 * rasops_alloc_cattr, on 4bpp/8bpp frame buffer.
+	 */
+	ri->ri_ops.alloc_attr = rasops_alloc_cattr;
 }

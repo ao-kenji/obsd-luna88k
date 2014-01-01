@@ -116,9 +116,6 @@ struct om_hwdevconfig {
 	struct hwcmap dc_cmap;		/* software copy of colormap */
 	vaddr_t	dc_videobase;		/* base of flat frame buffer */
 	struct rasops_info dc_ri;	/* raster blitter variables */
-	/* block move function, depend on depth */
-	int	(*dc_bmv)(struct rasops_info *, u_int16_t, u_int16_t, u_int16_t,
-			u_int16_t, u_int16_t, u_int16_t, int16_t, int16_t);
 };
 
 struct omfb_softc {
@@ -134,21 +131,12 @@ struct om_hwdevconfig omfb_console_dc;
 void omfb_getdevconfig(paddr_t, struct om_hwdevconfig *);
 
 /* in omrasops.c */
-int	om_cursor1(void *, int, int, int);
-int	om_putchar1(void *, int, int, u_int, long);
-int	om_cursor4(void *, int, int, int);
-int	om_putchar4(void *, int, int, u_int, long);
 int	om_copycols(void *, int, int, int, int);
 int	om_copyrows(void *, int, int, int num);
 int	om_erasecols(void *, int, int, int, long);
 int	om_eraserows(void *, int, int, long);
-/* in omrasops[14].c */
-int	om_windowmove1(struct rasops_info *, u_int16_t, u_int16_t, u_int16_t,
-		u_int16_t, u_int16_t, u_int16_t, int16_t, int16_t);
-int	om_windowmove4(struct rasops_info *, u_int16_t, u_int16_t, u_int16_t,
-		u_int16_t, u_int16_t, u_int16_t, int16_t, int16_t);
-/* in src/sys/dev/rasops/rasops.c */
-int	rasops_alloc_cattr(void *, int, int, int, long *);
+void	setup_omrasops1(struct rasops_info *);
+void	setup_omrasops4(struct rasops_info *);
 
 struct wsscreen_descr omfb_stdscreen = {
 	"std"
@@ -501,7 +489,11 @@ omfb_getdevconfig(paddr, dc)
 	} else if (hwplanebits == 8) {
 		struct bt458 *ndac = (struct bt458 *)OMFB_RAMDAC;
 
-		/* Initialize the Bt458 */
+		/*
+		 * Initialize the Bt458.  When we write to control registers,
+		 * the address is not incremented automatically. So we specify
+		 * it ourselves for each control register.
+		 */
 		ndac->bt_addr = 0x04;
 		ndac->bt_ctrl = 0xff; /* all planes will be read */
 		ndac->bt_addr = 0x05;
@@ -513,7 +505,7 @@ omfb_getdevconfig(paddr, dc)
 
 		/*
 		 * Set ANSI 16 colors.  We only supports 4bpp console right
-		 * now, repeat 16 colors in 256 palette.
+		 * now, repeat 16 colors in 256 colormap.
 		 */
 		ndac->bt_addr = 0;
 		for (i = 0; i < 256; i++) {
@@ -558,29 +550,11 @@ omfb_getdevconfig(paddr, dc)
 	omfb_stdscreen.fontwidth = ri->ri_font->fontwidth;
 	omfb_stdscreen.fontheight = ri->ri_font->fontheight;
 
-	switch (hwplanebits) {
-	default:
-	case 1:
-		dc->dc_bmv = om_windowmove1;
-		ri->ri_ops.cursor = om_cursor1;
-		ri->ri_ops.putchar = om_putchar1;
-		omfb_stdscreen.capabilities
-			= ri->ri_caps & ~WSSCREEN_UNDERLINE;
-		break;
-	case 4:
-	case 8:
-		dc->dc_bmv = om_windowmove4;
-		ri->ri_ops.cursor = om_cursor4;
-		ri->ri_ops.putchar = om_putchar4;
-		/*
-		 * Since we set ri->ri_depth == 1, rasops_init() set
-		 * rasops_alloc_mattr for us.  But we want to use
-		 * the color version, rasops_alloc_cattr.
-		 */
-		ri->ri_ops.alloc_attr = rasops_alloc_cattr;
-		omfb_stdscreen.capabilities
-			= WSSCREEN_HILIT | WSSCREEN_WSCOLORS | WSSCREEN_REVERSE;
-		break;
+	/* set up depth-depend functions and so on */
+	if ((hwplanebits == 4) || (hwplanebits == 8)) {
+		setup_omrasops4(ri);
+	} else {
+		setup_omrasops1(ri);
 	}
 }
 

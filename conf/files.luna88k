@@ -40,7 +40,7 @@ attach fb at mainbus
 file arch/luna88k/dev/lunafb.c				fb
 file arch/luna88k/dev/omrasops.c			fb
 file arch/luna88k/dev/omrasops1.c			fb
-file arch/luna88k/dev/omrasops4.c			fb
+#file arch/luna88k/dev/omrasops4.c			fb
 
 # Raster operations
 include "dev/rasops/files.rasops"

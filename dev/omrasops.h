@@ -45,3 +45,6 @@
 #define	BLITWIDTH	(32)
 #define	ALIGNMASK	(0x1f)
 #define	BYTESDONE	(4)
+
+int omrasops1_init(struct rasops_info *);
+int omrasops4_init(struct rasops_info *);
