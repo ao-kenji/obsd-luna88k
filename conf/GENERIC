@@ -41,9 +41,6 @@ ws0		at sio0
 fb0		at mainbus0
 spc0		at mainbus0
 spc1		at mainbus0
-#
-pcm0		at mainbus0
-audio*		at pcm?
 
 # Workstation Console attachments
 wsdisplay*	at fb?
