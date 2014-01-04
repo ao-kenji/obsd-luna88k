@@ -55,6 +55,7 @@ struct nec86_softc {
 };
 
 extern  struct  audio_hw_if nec86_hw_if;
-int	nec86_probesubr(bus_space_tag_t, bus_space_handle_t, bus_space_handle_t);
+int	nec86_probesubr(bus_space_tag_t, bus_space_handle_t,
+	    bus_space_handle_t);
 void	nec86_attachsubr(struct nec86_softc *);
 #endif	/* !_NEC86VAR_H_ */

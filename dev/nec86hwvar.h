@@ -48,78 +48,76 @@ typedef void (*func_fifo_input_t) (struct nec86hw_softc *, int);
 
 
 struct nec86hw_softc {
-    struct	device sc_dev;		/* base device */
+	struct	device sc_dev;		/* base device */
 
-    bus_space_tag_t sc_iot;		/* bus space tag */
-    bus_space_handle_t sc_ioh;		/* nec86 core chip space handle */
+	bus_space_tag_t sc_iot;		/* bus space tag */
+	bus_space_handle_t sc_ioh;	/* nec86 core chip space handle */
 
-    u_int	sc_cfgflags;		/* config flags */
+	u_int	sc_cfgflags;		/* config flags */
 #define NEC86HW_RATE_TYPE(flags)	((flags) & 1)
 #define NEC86HW_NRATE_TYPE		2
 
-    u_short	sc_open;		/* reference count of open calls */
+	u_short	sc_open;		/* reference count of open calls */
 
-    u_long	sc_irate;		/* sample rate for input */
-    u_long	sc_orate;		/* sample rate for output */
+	u_long	sc_irate;		/* sample rate for input */
+	u_long	sc_orate;		/* sample rate for output */
 
-    u_long	hw_irate;		/* hardware rate for input */
-    u_char	hw_irate_bits;
-    u_long	hw_orate;		/* hardware rate for output */
-    u_char	hw_orate_bits;
+	u_long	hw_irate;		/* hardware rate for input */
+	u_char	hw_irate_bits;
+	u_long	hw_orate;		/* hardware rate for output */
+	u_char	hw_orate_bits;
 
-    u_int	encoding;		/* ulaw / linear */
-    u_int	precision;		/* 8/16 bits */
-    int		channels;		/* monoral(1) / stereo(2) */
+	u_int	encoding;		/* ulaw / linear */
+	u_int	precision;		/* 8/16 bits */
+	int	channels;		/* monoral(1) / stereo(2) */
 
-    int		in_port;		/* Just keep track of it */
+	int	in_port;		/* Just keep track of it */
 #define NEC86HW_INPUT_MIXER	0
-    int		out_port;		/* Just keep track of it */
+	int	out_port;		/* Just keep track of it */
 #define NEC86HW_OUTPUT_MIXER	0
 
-    int 	model;			/* board identification number */
+	int 	model;			/* board identification number */
 
-    /* linear interpolation */
-    u_long	conv_acc;
-    u_short	conv_last0;
-    u_short	conv_last0_l;
-    u_short	conv_last0_r;
-    u_short	conv_last1;
-    u_short	conv_last1_l;
-    u_short	conv_last1_r;
+	/* linear interpolation */
+	u_long	conv_acc;
+	u_short	conv_last0;
+	u_short	conv_last0_l;
+	u_short	conv_last0_r;
+	u_short	conv_last1;
+	u_short	conv_last1_l;
+	u_short	conv_last1_r;
 
-    void	(*sc_intr)(void *);	/* DMA completion intr handler */
-    void	*sc_arg;		/* arg for sc_intr() */
+	void	(*sc_intr)(void *);	/* DMA completion intr handler */
+	void	*sc_arg;		/* arg for sc_intr() */
 
-    char	intr_busy;		/* whether the hardware running */
+	char	intr_busy;		/* whether the hardware running */
 
-    /* pseudo-DMA */
-    u_char	*pdma_ptr;		/* pointer to the data buffer */
-    int		pdma_count;		/* size of the data in frames */
-    int		pdma_nchunk;		/* number of chunks to do with */
-    int		pdma_watermark;		/* interrupt trigger level */
-    char	pdma_padded;		/* the buffer is padded out with
+	/* pseudo-DMA */
+	u_char	*pdma_ptr;		/* pointer to the data buffer */
+	int	pdma_count;		/* size of the data in frames */
+	int	pdma_nchunk;		/* number of chunks to do with */
+	int	pdma_watermark;		/* interrupt trigger level */
+	char	pdma_padded;		/* the buffer is padded out with
 					   dummy zero's */
-    char	pdma_mode;		/* input/output indicator */
+	char	pdma_mode;		/* input/output indicator */
 #define PDMA_MODE_NONE		0
 #define PDMA_MODE_OUTPUT	1
 #define PDMA_MODE_INPUT		2
 
-    /* function which writes to/reads from FIFO buffer */
-    func_fifo_output_t	func_fifo_output;
-    func_fifo_input_t	func_fifo_input;
+	/* function which writes to/reads from FIFO buffer */
+	func_fifo_output_t	func_fifo_output;
+	func_fifo_input_t	func_fifo_input;
 };
-
 
 struct nec86hw_functable_entry {
-    int		precision;
-    int		channels;
+	int	precision;
+	int	channels;
 
-    func_fifo_output_t 	func_fifo_output_direct;
-    func_fifo_input_t	func_fifo_input_direct;
-    func_fifo_output_t	func_fifo_output_resamp;
-    func_fifo_input_t	func_fifo_input_resamp;
+	func_fifo_output_t 	func_fifo_output_direct;
+	func_fifo_input_t	func_fifo_input_direct;
+	func_fifo_output_t	func_fifo_output_resamp;
+	func_fifo_input_t	func_fifo_input_resamp;
 };
-
 
 /*
  * Interrupt watermarks for the FIFO ring buffer on the hardware.
@@ -143,7 +141,8 @@ void	nec86hw_attach(struct nec86hw_softc *);
 int	nec86hw_open(void *, int);
 void	nec86hw_close(void *);
 
-int	nec86hw_set_params(void *, int, int, struct audio_params *, struct audio_params *);
+int	nec86hw_set_params(void *, int, int, struct audio_params *,
+	    struct audio_params *);
 int	nec86hw_query_encoding(void *, struct audio_encoding *);
 
 int	nec86hw_round_blocksize(void *, int);
