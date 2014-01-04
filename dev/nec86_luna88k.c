@@ -108,13 +108,12 @@ nec86_attach(struct device *parent, struct device *self, void *aux)
 	coreh = (bus_space_handle_t)(ma->ma_addr + 0xa466);
 
 #if 0
-    if (bus_space_map(iot, ma->ma_addr, 1, 0, &n86h) ||
-        bus_space_map(iot, ma->ma_addr + NEC86_COREOFFSET, 
-		      NEC86_CORESIZE, 0, &coreh))
-    {
-	printf("%s: can not map\n", ysc->sc_dev.dv_xname);
-        return;
-    }
+	if (bus_space_map(iot, ma->ma_addr, 1, 0, &n86h) ||
+	    bus_space_map(iot, ma->ma_addr + NEC86_COREOFFSET, 
+		NEC86_CORESIZE, 0, &coreh)) {
+		printf("%s: can not map\n", ysc->sc_dev.dv_xname);
+		return;
+	}
 #endif
 	nsc->sc_n86iot = iot;
 	nsc->sc_n86ioh = n86h;
@@ -123,11 +122,11 @@ nec86_attach(struct device *parent, struct device *self, void *aux)
 	ysc->sc_cfgflags = 0;	/* ia->ia_cfgflags */
 
 #if 0
-    systmmsg_bind(self, nec86_systmmsg);
+	systmmsg_bind(self, nec86_systmmsg);
 #endif
 
 	nec86_attachsubr(nsc);
 
 	isrlink_autovec(nec86hw_intr, ysc, ma->ma_ilvl, ISRPRI_NET,
-		self->dv_xname);
+	    self->dv_xname);
 }
