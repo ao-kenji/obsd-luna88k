@@ -66,9 +66,9 @@ extern struct cfdriver pcm_cd;
 #endif
 
 struct audio_device nec86_device = {
-    "PC-9801-86",
-    "",
-    "pcm"
+	"PC-9801-86",
+	"",
+	"pcm"
 };
 
 /*
@@ -76,33 +76,33 @@ struct audio_device nec86_device = {
  */
 
 struct audio_hw_if nec86_hw_if = {
-    nec86hw_open,
-    nec86hw_close,
-    NULL,			/* drain */
-    nec86hw_query_encoding,
-    nec86hw_set_params,
-    nec86hw_round_blocksize,
-    nec86hw_commit_settings,
-    nec86hw_pdma_init_output,
-    nec86hw_pdma_init_input,
-    nec86hw_pdma_output,
-    nec86hw_pdma_input,
-    nec86hw_halt_pdma,
-    nec86hw_halt_pdma,
-    nec86hw_speaker_ctl,
-    nec86getdev,
-    nec86hw_setfd,
-    nec86hw_mixer_set_port,
-    nec86hw_mixer_get_port,
-    nec86hw_mixer_query_devinfo,
-    NULL,			/* allocm */
-    NULL,			/* freem */
-    NULL,			/* round_buffersize */
-    NULL,			/* mappage */
-    nec86_get_props,
-    NULL,			/* trigger_output */
-    NULL,			/* trigger_input */
-    NULL			/* get_default_params */
+	nec86hw_open,
+	nec86hw_close,
+	NULL,			/* drain */
+	nec86hw_query_encoding,
+	nec86hw_set_params,
+	nec86hw_round_blocksize,
+	nec86hw_commit_settings,
+	nec86hw_pdma_init_output,
+	nec86hw_pdma_init_input,
+	nec86hw_pdma_output,
+	nec86hw_pdma_input,
+	nec86hw_halt_pdma,
+	nec86hw_halt_pdma,
+	nec86hw_speaker_ctl,
+	nec86getdev,
+	nec86hw_setfd,
+	nec86hw_mixer_set_port,
+	nec86hw_mixer_get_port,
+	nec86hw_mixer_query_devinfo,
+	NULL,			/* allocm */
+	NULL,			/* freem */
+	NULL,			/* round_buffersize */
+	NULL,			/* mappage */
+	nec86_get_props,
+	NULL,			/* trigger_output */
+	NULL,			/* trigger_input */
+	NULL			/* get_default_params */
 };
 
 /*
@@ -110,39 +110,39 @@ struct audio_hw_if nec86_hw_if = {
  */
 int
 nec86_probesubr(bus_space_tag_t iot, bus_space_handle_t ioh,
-	bus_space_handle_t n86ioh)
+    bus_space_handle_t n86ioh)
 {
-    u_int8_t data;
+	u_int8_t data;
 
 #ifdef	notyet
-    if (nec86hw_probesubr(iot, ioh) != 0)
-	return -1;
+	if (nec86hw_probesubr(iot, ioh) != 0)
+		return -1;
 #endif	/* notyet */
 
 #if 0
-    if (n86ioh == NULL)
+	if (n86ioh == NULL)
 #else
-    if (n86ioh == 0)
+	if (n86ioh == 0)
 #endif
-	data = 0x40;
-    else
-        data = bus_space_read_1(iot, n86ioh, NEC86_SOUND_ID);
+		data = 0x40;
+	else
+		data = bus_space_read_1(iot, n86ioh, NEC86_SOUND_ID);
 
-    switch (data & NEC_SCR_SIDMASK) {
+	switch (data & NEC_SCR_SIDMASK) {
 #if 0	/* XXX -  PC-9801-73 not yet supported. */
-    case 0x20:
-    case 0x30:
-	break;
+	case 0x20:
+	case 0x30:
+		break;
 #endif
-    case 0x40:
-    case 0x50:
-	break;
-    default:	/* No supported board found. */
-	return -1;
-	/*NOTREACHED*/
-    }
+	case 0x40:
+	case 0x50:
+		break;
+	default:	/* No supported board found. */
+		return -1;
+		/*NOTREACHED*/
+	}
 
-    return ((data & NEC_SCR_SIDMASK) >> 4) - 2;
+	return ((data & NEC_SCR_SIDMASK) >> 4) - 2;
 }
 
 /*
@@ -155,40 +155,38 @@ nec86_probesubr(bus_space_tag_t iot, bus_space_handle_t ioh,
 void
 nec86_attachsubr(struct nec86_softc *sc)
 {
-    struct nec86hw_softc *ysc = &sc->sc_nec86hw;
-    bus_space_tag_t iot = sc->sc_n86iot;
-    bus_space_handle_t n86ioh = sc->sc_n86ioh;
-    char *boardname[] = {MODEL0_NAME, MODEL0_NAME, MODEL1_NAME, MODEL1_NAME};
-    u_int8_t data;
-    int model;
-  
-    if ((model = nec86_probesubr(iot, n86ioh, n86ioh)) < 0)
-    {
-	printf("%s: missing hardware\n", ysc->sc_dev.dv_xname);
-	return;
-    }
-    ysc->model = model;
+	struct nec86hw_softc *ysc = &sc->sc_nec86hw;
+	bus_space_tag_t iot = sc->sc_n86iot;
+	bus_space_handle_t n86ioh = sc->sc_n86ioh;
+	char *boardname[] =
+	    {MODEL0_NAME, MODEL0_NAME, MODEL1_NAME, MODEL1_NAME};
+	u_int8_t data;
+	int model;
+
+	if ((model = nec86_probesubr(iot, n86ioh, n86ioh)) < 0) {
+		printf("%s: missing hardware\n", ysc->sc_dev.dv_xname);
+		return;
+	}
+	ysc->model = model;
 
 #if 0
-    if (n86ioh != NULL)
+	if (n86ioh != NULL) {
 #else
-    if (n86ioh != 0)
+	if (n86ioh != 0) {
 #endif
-    {
-    	data = bus_space_read_1(iot, n86ioh, NEC86_SOUND_ID);
-    	data &= ~NEC_SCR_MASK;
-    	data |= NEC_SCR_EXT_ENABLE;
-    	bus_space_write_1(iot, n86ioh, NEC86_SOUND_ID, data);
-    }
+		data = bus_space_read_1(iot, n86ioh, NEC86_SOUND_ID);
+		data &= ~NEC_SCR_MASK;
+		data |= NEC_SCR_EXT_ENABLE;
+		bus_space_write_1(iot, n86ioh, NEC86_SOUND_ID, data);
+	}
 
-    nec86hw_attach(ysc);
+	nec86hw_attach(ysc);
 
-    if (sc->sc_attached == 0)
-    {
-	    printf(": %s\n", boardname[ysc->model]);
-	    audio_attach_mi(&nec86_hw_if, ysc, &ysc->sc_dev);
-	    sc->sc_attached = 1;
-     }
+	if (sc->sc_attached == 0) {
+		printf(": %s\n", boardname[ysc->model]);
+		audio_attach_mi(&nec86_hw_if, ysc, &ysc->sc_dev);
+		sc->sc_attached = 1;
+	}
 }
 
 /*
@@ -197,7 +195,7 @@ nec86_attachsubr(struct nec86_softc *sc)
 int
 nec86getdev(void *addr, struct audio_device *retp)
 {
-    *retp = nec86_device;
+	*retp = nec86_device;
 
-    return 0;
+	return 0;
 }
