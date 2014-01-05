@@ -36,8 +36,8 @@
 #define IPL_NONE	0
 #define IPL_SOFTINT	1
 #define IPL_BIO		3
+#define IPL_AUDIO	4
 #define IPL_NET		4
-#define IPL_AUDIO	5
 #define IPL_TTY		5
 #define IPL_VM		5
 #define IPL_CLOCK	6
