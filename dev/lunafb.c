@@ -159,6 +159,10 @@ int	omfb_show_screen(void *, void *, int, void (*) (void *, int, int),
 	    void *);
 int	omfb_load_font(void *, void *, struct wsdisplay_font *);
 int	omfb_list_font(void *, struct wsdisplay_font *);
+int	omfb_setgfxmode(struct omfb_softc *, struct wsdisplay_gfx_mode *);
+
+void	omfb_set_default_cmap(struct om_hwdevconfig *, int);
+void	omfb_clear_framebuffer(struct om_hwdevconfig *);
 
 const struct wsdisplay_accessops omfb_accessops = {
 	.ioctl = omfbioctl,
@@ -278,6 +282,9 @@ omfbioctl(void *v, u_long cmd, caddr_t data, int flag, struct proc *p)
 	case WSDISPLAYIO_GETSUPPORTEDDEPTH:
 		*(u_int *)data = WSDISPLAYIO_DEPTH_1;
 		break;
+
+        case WSDISPLAYIO_SETGFXMODE:
+                return omfb_setgfxmode(sc, (struct wsdisplay_gfx_mode *)data);
 
 	case WSDISPLAYIO_SVIDEO:
 	case WSDISPLAYIO_GVIDEO:
@@ -404,7 +411,7 @@ omsetcmap(struct omfb_softc *sc, struct wsdisplay_cmap *p)
 void
 omfb_getdevconfig(paddr_t paddr, struct om_hwdevconfig *dc)
 {
-	int bpp, i;
+	int bpp;
 	struct rasops_info *ri;
 	union {
 		struct { short h, v; } p;
@@ -457,44 +464,8 @@ omfb_getdevconfig(paddr_t paddr, struct om_hwdevconfig *dc)
 	dc->dc_cmsize = (bpp == 1) ? 0 : 1 << bpp;
 	dc->dc_videobase = paddr;
 
-	/* WHITE on BLACK */
-	if ((hwplanebits == 1) || (hwplanebits == 4)) {
-		struct bt454 *odac = (struct bt454 *)OMFB_RAMDAC;
-
-		odac->bt_addr = 0;
-		for (i = 0; i < 16; i++) {
-			odac->bt_cmap = dc->dc_cmap.r[i] = ansicmap[i].r;
-			odac->bt_cmap = dc->dc_cmap.g[i] = ansicmap[i].g;
-			odac->bt_cmap = dc->dc_cmap.b[i] = ansicmap[i].b;
-		}
-	} else if (hwplanebits == 8) {
-		struct bt458 *ndac = (struct bt458 *)OMFB_RAMDAC;
-
-		/*
-		 * Initialize the Bt458.  When we write to control registers,
-		 * the address is not incremented automatically. So we specify
-		 * it ourselves for each control register.
-		 */
-		ndac->bt_addr = 0x04;
-		ndac->bt_ctrl = 0xff; /* all planes will be read */
-		ndac->bt_addr = 0x05;
-		ndac->bt_ctrl = 0x00; /* all planes have non-blink */
-		ndac->bt_addr = 0x06;
-		ndac->bt_ctrl = 0x40; /* palette enabled, ovly plane disabled */
-		ndac->bt_addr = 0x07;
-		ndac->bt_ctrl = 0x00; /* no test mode */
-
-		/*
-		 * Set ANSI 16 colors.  We only supports 4bpp console right
-		 * now, repeat 16 colors in 256 colormap.
-		 */
-		ndac->bt_addr = 0;
-		for (i = 0; i < 256; i++) {
-			ndac->bt_cmap = dc->dc_cmap.r[i] = ansicmap[i % 16].r;
-			ndac->bt_cmap = dc->dc_cmap.g[i] = ansicmap[i % 16].g;
-			ndac->bt_cmap = dc->dc_cmap.b[i] = ansicmap[i % 16].b;
-		}
-	}
+	/* set default colormap; wscons on LUNA only supports 4bpp for now */
+	omfb_set_default_cmap(dc, 4);
 
 	/* adjust h/v origin on screen */
 	rfcnt.p.h = 7;
@@ -503,11 +474,7 @@ omfb_getdevconfig(paddr_t paddr, struct om_hwdevconfig *dc)
 	*(volatile u_int32_t *)OMFB_RFCNT = rfcnt.u;
 
 	/* clear the screen */
-	*(volatile u_int32_t *)OMFB_PLANEMASK = 0xff;
-	((volatile u_int32_t *)OMFB_ROPFUNC)[5] = ~0;	/* ROP copy */
-	for (i = 0; i < dc->dc_ht * dc->dc_rowbytes / sizeof(u_int32_t); i++)
-		*((volatile u_int32_t *)dc->dc_videobase + i) = 0;
-	*(volatile u_int32_t *)OMFB_PLANEMASK = 0x01;
+	omfb_clear_framebuffer(dc);
 
 	/* initialize the raster */
 	ri = &dc->dc_ri;
@@ -588,4 +555,121 @@ omfb_list_font(void *v, struct wsdisplay_font *font)
 	struct rasops_info *ri = &sc->sc_dc->dc_ri;
 
 	return rasops_list_font(ri, font);
+}
+
+int
+omfb_setgfxmode(struct omfb_softc *sc, struct wsdisplay_gfx_mode *wsd_gfxmode)
+{
+        /* LUNA's fb is fixed size */
+        if ((wsd_gfxmode->width != sc->sc_dc->dc_wid)
+                || (wsd_gfxmode->height != sc->sc_dc->dc_ht))
+                        return -1;
+
+        switch (wsd_gfxmode->depth) {
+        case 1:
+		/* all frame buffer supports this */
+		sc->sc_dc->dc_depth = 1;
+		sc->sc_dc->dc_cmsize = 0;
+		omfb_set_default_cmap(sc->sc_dc, 1);
+		omfb_clear_framebuffer(sc->sc_dc);
+printf("%s: should be set depth to %d\n", __func__, wsd_gfxmode->depth);
+                break;
+        case 4:
+		if ((hwplanebits == 4) || (hwplanebits == 8)) {
+			sc->sc_dc->dc_depth = 4;
+			sc->sc_dc->dc_cmsize = 16;
+			omfb_set_default_cmap(sc->sc_dc, 4);
+			omfb_clear_framebuffer(sc->sc_dc);
+printf("%s: should be set depth to %d\n", __func__, wsd_gfxmode->depth);
+			break;
+		} else
+			return -1;
+        case 8:
+		if (hwplanebits == 8) {
+			sc->sc_dc->dc_depth = 8;
+			sc->sc_dc->dc_cmsize = 256;
+			/* XXX: wscons on LUNA only supports 4bpp for now */
+			omfb_set_default_cmap(sc->sc_dc, 4);
+			omfb_clear_framebuffer(sc->sc_dc);
+printf("%s: should be set depth to %d\n", __func__, wsd_gfxmode->depth);
+			break;
+		} else
+			return -1;
+        default:
+                return -1;
+        }
+        return 0;
+}
+
+void
+omfb_clear_framebuffer(struct om_hwdevconfig *dc)
+{
+	int i;
+
+	*(volatile u_int32_t *)OMFB_PLANEMASK = 0xff;
+	((volatile u_int32_t *)OMFB_ROPFUNC)[5] = ~0;	/* ROP copy */
+	for (i = 0; i < dc->dc_ht * dc->dc_rowbytes / sizeof(u_int32_t); i++)
+		*((volatile u_int32_t *)dc->dc_videobase + i) = 0;
+	*(volatile u_int32_t *)OMFB_PLANEMASK = 0x01;
+}
+
+void
+omfb_set_default_cmap(struct om_hwdevconfig *dc, int depth)
+{
+	int i;
+
+	/* WHITE on BLACK */
+	if ((hwplanebits == 1) || (hwplanebits == 4)) {
+		struct bt454 *odac = (struct bt454 *)OMFB_RAMDAC;
+
+		odac->bt_addr = 0;
+		if (depth == 1) {
+			for (i = 0; i < 16; i++) {
+				odac->bt_cmap = dc->dc_cmap.r[i] = i % 2 ? 255 : 0;
+				odac->bt_cmap = dc->dc_cmap.g[i] = i % 2 ? 255 : 0;
+				odac->bt_cmap = dc->dc_cmap.b[i] = i % 2 ? 255 : 0;
+			}
+		} else {
+			for (i = 0; i < 16; i++) {
+				odac->bt_cmap = dc->dc_cmap.r[i] = ansicmap[i].r;
+				odac->bt_cmap = dc->dc_cmap.g[i] = ansicmap[i].g;
+				odac->bt_cmap = dc->dc_cmap.b[i] = ansicmap[i].b;
+			}
+		}
+	} else if (hwplanebits == 8) {
+		struct bt458 *ndac = (struct bt458 *)OMFB_RAMDAC;
+
+		/*
+		 * Initialize the Bt458.  When we write to control registers,
+		 * the address is not incremented automatically. So we specify
+		 * it ourselves for each control register.
+		 */
+		ndac->bt_addr = 0x04;
+		ndac->bt_ctrl = 0xff; /* all planes will be read */
+		ndac->bt_addr = 0x05;
+		ndac->bt_ctrl = 0x00; /* all planes have non-blink */
+		ndac->bt_addr = 0x06;
+		ndac->bt_ctrl = 0x40; /* palette enabled, ovly plane disabled */
+		ndac->bt_addr = 0x07;
+		ndac->bt_ctrl = 0x00; /* no test mode */
+
+		/*
+		 * Set ANSI 16 colors.  We only supports 4bpp console right
+		 * now, repeat 16 colors in 256 colormap.
+		 */
+		ndac->bt_addr = 0;
+		if (depth == 1) {
+			for (i = 0; i < 256; i++) {
+				ndac->bt_cmap = dc->dc_cmap.r[i] = i % 2 ? 255 : 0;
+				ndac->bt_cmap = dc->dc_cmap.g[i] = i % 2 ? 255 : 0;
+				ndac->bt_cmap = dc->dc_cmap.b[i] = i % 2 ? 255 : 0;
+			}
+		} else {
+			for (i = 0; i < 256; i++) {
+				ndac->bt_cmap = dc->dc_cmap.r[i] = ansicmap[i % 16].r;
+				ndac->bt_cmap = dc->dc_cmap.g[i] = ansicmap[i % 16].g;
+				ndac->bt_cmap = dc->dc_cmap.b[i] = ansicmap[i % 16].b;
+			}
+		}
+	}
 }
