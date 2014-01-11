@@ -565,6 +565,10 @@ omfb_setgfxmode(struct omfb_softc *sc, struct wsdisplay_gfx_mode *wsd_gfxmode)
                 || (wsd_gfxmode->height != sc->sc_dc->dc_ht))
                         return -1;
 
+	/* if depth == 0, set to the hardware default depth */
+	if (wsd_gfxmode->depth == 0)
+		wsd_gfxmode->depth = hwplanebits;
+
         switch (wsd_gfxmode->depth) {
         case 1:
 		/* all frame buffer supports this */
@@ -572,7 +576,6 @@ omfb_setgfxmode(struct omfb_softc *sc, struct wsdisplay_gfx_mode *wsd_gfxmode)
 		sc->sc_dc->dc_cmsize = 0;
 		omfb_set_default_cmap(sc->sc_dc, 1);
 		omfb_clear_framebuffer(sc->sc_dc);
-printf("%s: should be set depth to %d\n", __func__, wsd_gfxmode->depth);
                 break;
         case 4:
 		if ((hwplanebits == 4) || (hwplanebits == 8)) {
@@ -580,7 +583,6 @@ printf("%s: should be set depth to %d\n", __func__, wsd_gfxmode->depth);
 			sc->sc_dc->dc_cmsize = 16;
 			omfb_set_default_cmap(sc->sc_dc, 4);
 			omfb_clear_framebuffer(sc->sc_dc);
-printf("%s: should be set depth to %d\n", __func__, wsd_gfxmode->depth);
 			break;
 		} else
 			return -1;
@@ -591,7 +593,6 @@ printf("%s: should be set depth to %d\n", __func__, wsd_gfxmode->depth);
 			/* XXX: wscons on LUNA only supports 4bpp for now */
 			omfb_set_default_cmap(sc->sc_dc, 4);
 			omfb_clear_framebuffer(sc->sc_dc);
-printf("%s: should be set depth to %d\n", __func__, wsd_gfxmode->depth);
 			break;
 		} else
 			return -1;
@@ -617,6 +618,11 @@ void
 omfb_set_default_cmap(struct om_hwdevconfig *dc, int depth)
 {
 	int i;
+
+	if ((depth != 1) && (depth != 4)) {
+		printf("default colormap depth should be 1 or 4.\n");
+		return;
+	}
 
 	/* WHITE on BLACK */
 	if ((hwplanebits == 1) || (hwplanebits == 4)) {
