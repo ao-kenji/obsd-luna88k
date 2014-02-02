@@ -129,4 +129,12 @@ nec86_attach(struct device *parent, struct device *self, void *aux)
 
 	isrlink_autovec(nec86hw_intr, ysc, ma->ma_ilvl, ISRPRI_NET,
 	    self->dv_xname);
+
+#if 0
+	/* reset OPNA timer A/B */
+	*(volatile u_int8_t *)(0x91000000 + 0x0188) = 0x27;
+	delay(100);	/* 100 ms */
+	*(volatile u_int8_t *)(0x91000000 + 0x018a) = 0x30;
+	delay(100);	/* 100 ms */
+#endif
 }
