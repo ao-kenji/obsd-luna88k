@@ -1100,9 +1100,6 @@ DPRINTF(("m8d: sc->pdma_ptr=0x%x, cc=%d\n", sc->pdma_ptr, cc));
     for (i = 0; i < cc; i++) {
 	d = *p++;
 	d ^= 0x80;	/* unsigned -> signed */
-
-DPRINTF((",%d", (int)d));
-
 	/* Fake monoral playing by duplicating a sample. */
 	bus_space_write_1(iot, ioh, NEC86_FIFODATA, d);
 	bus_space_write_1(iot, ioh, NEC86_FIFODATA, d);
