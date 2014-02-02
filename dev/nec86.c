@@ -83,18 +83,18 @@ struct audio_hw_if nec86_hw_if = {
 	nec86hw_set_params,
 	nec86hw_round_blocksize,
 	nec86hw_commit_settings,
-	nec86hw_pdma_init_output,
-	nec86hw_pdma_init_input,
-	nec86hw_pdma_output,
-	nec86hw_pdma_input,
-	nec86hw_halt_pdma,
-	nec86hw_halt_pdma,
+	nec86hw_pdma_init_output,	/* init_output */
+	nec86hw_pdma_init_input,	/* init_input */
+	nec86hw_pdma_output,		/* start_output */
+	nec86hw_pdma_input,		/* start_input */
+	nec86hw_halt_pdma,		/* halt_output */
+	nec86hw_halt_pdma,		/* halt_input */
 	nec86hw_speaker_ctl,
 	nec86getdev,
 	nec86hw_setfd,
-	nec86hw_mixer_set_port,
-	nec86hw_mixer_get_port,
-	nec86hw_mixer_query_devinfo,
+	nec86hw_mixer_set_port,		/* set_port */
+	nec86hw_mixer_get_port,		/* get_port */
+	nec86hw_mixer_query_devinfo,	/* query_devinfo */
 	NULL,			/* allocm */
 	NULL,			/* freem */
 	NULL,			/* round_buffersize */
