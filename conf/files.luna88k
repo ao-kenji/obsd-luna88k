@@ -70,6 +70,10 @@ file arch/luna88k/dev/mb89352.c				spc
 #file arch/luna88k/dev/nec86hw.c			pcm needs-flag
 #file arch/luna88k/dev/nec86_luna88k.c			pcm needs-flag
 
+device pc98ext
+attach pc98ext at mainbus
+file arch/luna88k/dev/pc98ext.c				pc98ext needs-flag
+
 # list of standard files
 file	arch/luna88k/luna88k/clock.c
 
