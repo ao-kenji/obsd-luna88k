@@ -52,14 +52,33 @@
 #include <machine/autoconf.h>
 #include <machine/conf.h>
 #include <machine/intr.h>
-/* #include <machine/pc98ext.h> */
+#include <machine/pc98ext.h>
 
 #include <uvm/uvm_extern.h>
 
 #include <luna88k/luna88k/isr.h>
 
-/* prototypes */
-int pc98ext_intr(void *);
+#define PC98EXT_INT_MASK_NONE	0x00
+
+u_int8_t pc98ext_int_mask[] = {
+	0x40,	/* INT 0 */
+	0x20,	/* INT 1 */
+	0x10,	/* INT 2 */
+	0x08,	/* INT 3 */
+	0x04,	/* INT 4 */
+	0x02,	/* INT 5 */
+	0x01	/* INT 6 */
+};
+
+u_int8_t pc98ext_int_clear[] = {
+	0x40,	/* INT 0 */
+	0x20,	/* INT 1 */
+	0x10,	/* INT 2 */
+	0x08,	/* INT 3 */
+	0x04,	/* INT 4 */
+	0x02,	/* INT 5 */
+	0x01	/* INT 6 */
+};
 
 /* autoconf stuff */
 int pc98ext_match(struct device *, void *, void *);
@@ -67,11 +86,9 @@ void pc98ext_attach(struct device *, struct device *, void *);
 
 struct pc98ext_softc {
 	struct device sc_dev;
-	int initialized;
-	u_int8_t intreg;
+	int enable_intr;
+	u_int8_t int_mask;
 };
-
-int pc98ext_initted;
 
 const struct cfattach pc98ext_ca = {
 	sizeof(struct pc98ext_softc), pc98ext_match, pc98ext_attach
@@ -80,6 +97,18 @@ const struct cfattach pc98ext_ca = {
 struct cfdriver pc98ext_cd = {
 	NULL, "pc98ext", DV_DULL
 };
+
+/* prototypes */
+int pc98ext_intr(void *);
+int pc98ext_enable_int(struct pc98ext_softc *, u_int);
+int pc98ext_disable_int(struct pc98ext_softc *, u_int);
+int pc98ext_wait_int(struct pc98ext_softc *, u_int);
+int pc98ext_check_int(struct pc98ext_softc *, u_int);
+
+/*
+ * C-bus Interrupt Status Register
+ */
+volatile u_int8_t *cisr = (u_int8_t *)0x91100000;
 
 int
 pc98ext_match(struct device *parent, void *cf, void *aux)
@@ -101,8 +130,11 @@ pc98ext_attach(struct device *parent, struct device *self, void *args)
 	struct pc98ext_softc *sc = (struct pc98ext_softc *)self;
 	struct mainbus_attach_args *ma = args;
 
-	isrlink_autovec(pc98ext_intr, (void *)sc, ma->ma_ilvl, ISRPRI_TTY,
-		self->dv_xname);
+	sc->enable_intr = 0;
+	sc->int_mask = PC98EXT_INT_MASK_NONE;
+
+	isrlink_autovec(pc98ext_intr, (void *)self, ma->ma_ilvl,
+		ISRPRI_TTY, self->dv_xname);
 
 	printf("\n");
 }
@@ -129,49 +161,6 @@ pc98extclose(dev_t dev, int flag, int mode, struct proc *p)
 	return (0);
 }
 
-#if 0
-/*ARGSUSED*/
-int
-pc98extrw(dev_t dev, struct uio *uio, int flags)
-{
-	vaddr_t v;
-	int c;
-	struct iovec *iov;
-	int error = 0;
-
-	while (uio->uio_resid > 0 && error == 0) {
-		iov = uio->uio_iov;
-		if (iov->iov_len == 0) {
-			uio->uio_iov++;
-			uio->uio_iovcnt--;
-			if (uio->uio_iovcnt < 0)
-				panic("mmrw");
-			continue;
-		}
-		switch (minor(dev)) {
-
-/* minor device 0 is physical memory */
-		case 0:
-/* minor device 1 is memory mapped I/O port area */
-		case 1:
-			v = uio->uio_offset;
-			error = uiomove((caddr_t)v, uio->uio_resid, uio);
-			continue;
-		default:
-			return (ENXIO);
-		}
-		if (error)
-			break;
-		iov->iov_base += c;
-		iov->iov_len -= c;
-		uio->uio_offset += c;
-		uio->uio_resid -= c;
-	}
-
-	return (error);
-}
-#endif
-
 /*ARGSUSED*/
 paddr_t
 pc98extmmap(dev_t dev, off_t off, int prot)
@@ -189,29 +178,101 @@ pc98extmmap(dev_t dev, off_t off, int prot)
 int
 pc98extioctl(dev_t dev, u_long cmd, caddr_t data, int flags, struct proc *p)
 {
-	return (EOPNOTSUPP);
+	struct pc98ext_softc *sc = (struct pc98ext_softc *)dev;
+
+	u_int level;
+
+	level = *(u_int *)data;
+	printf("%s: enable_intr = %d\n", __func__, sc->enable_intr);
+
+	switch(cmd) {
+	case PCEXSETLEVEL:
+		return pc98ext_enable_int(sc, level);
+
+	case PCEXRESETLEVEL:
+		return pc98ext_disable_int(sc, level);
+
+	case PCEXWAITINT:
+		return pc98ext_wait_int(sc, level);
+
+	case PCEXCHECKINT:
+		return pc98ext_check_int(sc, level);
+
+	default:
+		return ENOTTY;
+	}
+	return 0;
+}
+
+int
+pc98ext_enable_int(struct pc98ext_softc *sc, u_int level)
+{
+	u_int8_t pre_mask;
+
+	if ((level < 0) || (level > 6))
+		return EINVAL;
+
+	pre_mask = sc->int_mask;
+	sc->int_mask |= pc98ext_int_mask[level];
+	if (pre_mask == PC98EXT_INT_MASK_NONE)
+		sc->enable_intr = 1;
+
+	return 0;
+}
+
+int
+pc98ext_disable_int(struct pc98ext_softc *sc, u_int level)
+{
+	if ((level < 0) || (level > 6))
+		return EINVAL;
+
+	sc->int_mask &= ~pc98ext_int_mask[level];
+	/* clear interrupt flag */
+	*cisr = (u_int8_t)(6 - level);
+
+	if (sc->int_mask == PC98EXT_INT_MASK_NONE)
+		sc->enable_intr = 0;
+
+	return 0;
+}
+
+int
+pc98ext_wait_int(struct pc98ext_softc *sc, u_int level)
+{
+	if ((level < 0) || (level > 6))
+		return EINVAL;
+
+	while ((*cisr & sc->int_mask) == 0)
+		;
+
+	return 0;
+}
+
+int
+pc98ext_check_int(struct pc98ext_softc *sc, u_int level)
+{
+	if ((level < 0) || (level > 6))
+		return EINVAL;
+
+	return (int)(*cisr & pc98ext_int_mask[level]);
 }
 
 /*
- * C-bus Interrupt Status Register
+ * Interrupt handler
  */
-volatile u_int8_t *cisr = (u_int8_t *)0x91100000;
-
 int
 pc98ext_intr(void *arg)
 {
-#if 0
 	struct pc98ext_softc *sc = (struct pc98ext_softc *)arg;
-#endif
 
-	if (!pc98ext_initted) return 1;
-
-	if ((*cisr & 0x7f) != 0)	/* If it is not INT5, return */
-		return 0;
+	if (sc->enable_intr == 0) return 1;
 
 	printf("%s: interrupt with 0x%02x\n", __func__, *cisr);
 
-	*cisr = 1;			/* Clear INT5 flag */
+	if ((*cisr & 0x02) != 0)	/* If it is not INT5, return */
+		return 0;
+
+	*cisr = (u_int8_t)(6 - 5);
 
 	return 1;
 }

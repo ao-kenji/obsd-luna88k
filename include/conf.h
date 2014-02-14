@@ -56,12 +56,3 @@ cdev_decl(pc98ext);
 	(dev_type_write((*))) enodev, dev_init(c,n,ioctl), \
 	(dev_type_stop((*))) enodev, 0, selfalse, \
 	dev_init(c,n,mmap) }
-
-#if 0
-/* open, close, read, write, ioctl, mmap */
-#define cdev_pc98ext_init(c,n) { \
-        dev_init(c,n,open), dev_init(c,n,close), dev_init(c,n,read), \
-        dev_init(c,n,write), dev_init(c,n,ioctl), \
-        (dev_type_stop((*))) enodev, 0, seltrue, dev_init(c,n,mmap), \
-        0, 0, seltrue_kqfilter }
-#endif
