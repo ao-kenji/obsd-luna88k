@@ -77,7 +77,7 @@ void pc98ext_attach(struct device *, struct device *, void *);
 
 struct pc98ext_softc {
 	struct device sc_dev;
-	int enable_intr;
+	int intr_enabled;
 	u_int8_t int_bits;
 };
 
@@ -121,7 +121,7 @@ pc98ext_attach(struct device *parent, struct device *self, void *args)
 	struct pc98ext_softc *sc = (struct pc98ext_softc *)self;
 	struct mainbus_attach_args *ma = args;
 
-	sc->enable_intr = 0;
+	sc->intr_enabled = 0;
 	sc->int_bits = PC98EXT_INT_BITS_NONE;
 
 	isrlink_autovec(pc98ext_intr, (void *)self, ma->ma_ilvl,
@@ -174,7 +174,7 @@ pc98extioctl(dev_t dev, u_long cmd, caddr_t data, int flags, struct proc *p)
 	}
 
 	level = *(u_int *)data;
-	printf("%s: enable_intr = %d\n", __func__, sc->enable_intr);
+	printf("%s: intr_enabled = %d\n", __func__, sc->intr_enabled);
 
 	switch(cmd) {
 	case PCEXSETLEVEL:
@@ -205,7 +205,7 @@ pc98ext_enable_int(struct pc98ext_softc *sc, u_int level)
 	pre_int_bits = sc->int_bits;
 	sc->int_bits |= pc98ext_int_bits[level];
 	if (pre_int_bits == PC98EXT_INT_BITS_NONE)
-		sc->enable_intr = 1;
+		sc->intr_enabled = 1;
 
 	return 0;
 }
@@ -221,7 +221,7 @@ pc98ext_disable_int(struct pc98ext_softc *sc, u_int level)
 	*cisr = (u_int8_t)(6 - level);
 
 	if (sc->int_bits == PC98EXT_INT_BITS_NONE)
-		sc->enable_intr = 0;
+		sc->intr_enabled = 0;
 
 	return 0;
 }
@@ -256,25 +256,59 @@ pc98ext_check_int(struct pc98ext_softc *sc, u_int level)
 int
 pc98ext_intr(void *arg)
 {
+#if 1
+	struct pc98ext_softc *sc = (struct pc98ext_softc *)arg;
+
+	/*
+	 * This is possible, because interrupt level 4 is shared with other
+	 * devices.  We simply return with -1;
+	 */
+	if (sc->intr_enabled == 0) return -1;
+
+	/* If it is not INT5, return */
+	if ((*cisr & 0x02) != 0)
+		return 0;
+
+	/* Do something */
+	printf("%s: called, intr_enabled=%d\n",
+		__func__, sc->intr_enabled);
+
+	/* Clear INT5 interrupt flag */
+	*cisr = 1;
+
+	return 1;
+#else
 	struct pc98ext_softc *sc = (struct pc98ext_softc *)arg;
 	u_int8_t int_stat;
-	u_int val;
+	u_int32_t int_bits;
+	int b;
 
-	if (sc->enable_intr == 0) return 1;
-
+	if (sc->intr_enabled == 0) return 1;
 
 	/* If it is not waiting INT, return */
 	int_stat = *cisr;
-	if ((int_stat & sc->int_bits) != 0)
-		return 0;
 
-	/* function call ? */
+	int_bits = (u_int32_t)sc->int_bits;
 
-	/* clear INT flag */
-	while ((val = ff1((u_int)int_stat)) != 32) {
-		printf("%s: writing  %d\n", val);
-		*cisr = (u_int8_t)(val);
+	while ((b = ff1(int_bits)) != 32) {
+		if (b > 7) {
+			printf("stray C-bus INT, bit %d\n", b);
+			int_bits |= ~(1 << b);
+			continue;
+		}
+		printf("check C-bus INT%d\n", 6 - b);
+		if ((int_stat & pc98ext_int_bits[6 - b]) == 0) {
+			printf("INT%d found\n", 6 - b);
+
+			/* do something */
+
+			/* clear CISR */
+			printf("%s: writing  %d\n", b);
+			*cisr = (u_int8_t)(b);
+			int_bits |= ~(1 << b);
+		}
 	}
 
 	return 1;
+#endif
 }
