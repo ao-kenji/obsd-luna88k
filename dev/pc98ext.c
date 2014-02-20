@@ -23,7 +23,7 @@
 
 #include <sys/param.h>
 #include <sys/buf.h>	/* need this? */
-#include <sys/systm.h>	/* need this? */
+#include <sys/systm.h>	/* tsleep()/wakeup() */
 #include <sys/uio.h>
 #include <sys/malloc.h>	/* need this? */
 #include <sys/device.h>
@@ -57,7 +57,7 @@ void pc98ext_attach(struct device *, struct device *, void *);
 
 struct pc98ext_softc {
 	struct device sc_dev;
-	int intr_enabled;
+	int intr_handled;
 	u_int8_t int_bits;
 };
 
@@ -101,7 +101,6 @@ pc98ext_attach(struct device *parent, struct device *self, void *args)
 	struct pc98ext_softc *sc = (struct pc98ext_softc *)self;
 	struct mainbus_attach_args *ma = args;
 
-	sc->intr_enabled = 0;
 	sc->int_bits = PC98EXT_INT_BITS_NONE;
 
 	isrlink_autovec(pc98ext_intr, (void *)self, ma->ma_ilvl,
@@ -152,7 +151,6 @@ pc98extioctl(dev_t dev, u_long cmd, caddr_t data, int flags, struct proc *p)
 	}
 
 	level = *(u_int *)data;
-	printf("%s: intr_enabled = %d\n", __func__, sc->intr_enabled);
 
 	switch(cmd) {
 	case PCEXSETLEVEL:
@@ -175,15 +173,10 @@ pc98extioctl(dev_t dev, u_long cmd, caddr_t data, int flags, struct proc *p)
 int
 pc98ext_enable_int(struct pc98ext_softc *sc, u_int level)
 {
-	u_int8_t pre_int_bits;
-
 	if ((level < 0) || (level > 6))
 		return EINVAL;
 
-	pre_int_bits = sc->int_bits;
 	sc->int_bits |= pc98ext_int_bits[level];
-	if (pre_int_bits == PC98EXT_INT_BITS_NONE)
-		sc->intr_enabled = 1;
 
 	return 0;
 }
@@ -198,9 +191,6 @@ pc98ext_disable_int(struct pc98ext_softc *sc, u_int level)
 	/* clear interrupt flag */
 	*cisr = (u_int8_t)(6 - level);
 
-	if (sc->int_bits == PC98EXT_INT_BITS_NONE)
-		sc->intr_enabled = 0;
-
 	return 0;
 }
 
@@ -210,11 +200,12 @@ pc98ext_wait_int(struct pc98ext_softc *sc, u_int level)
 	if ((level < 0) || (level > 6))
 		return EINVAL;
 
-	while ((*cisr & pc98ext_int_bits[level]) != 0)
-		;	/* XXX busy loop? */
+	sc->intr_handled = 0;
 
-	/* clear INT flag */
-	*cisr = (u_int8_t)(6 - level);
+	while (sc->intr_handled == 0) {
+		tsleep((void *)sc, 0, "pc98ext", 0);
+		printf("%s: wakeup from tsleep\n", __func__);
+	}
 
 	return 0;
 }
@@ -238,21 +229,21 @@ pc98ext_intr(void *arg)
 	struct pc98ext_softc *sc = (struct pc98ext_softc *)arg;
 
 	/*
-	 * This is possible, because interrupt level 4 is shared with other
-	 * devices.  We simply return with -1;
+	 * Interrupt level 4 is shared with other devices.  So check my
+	 * interrupt status register first.
 	 */
-	if (sc->intr_enabled == 0) return -1;
 
-	/* If it is not INT5, return */
-	if ((*cisr & 0x02) != 0)
-		return 0;
+	/* Should we compare with use sc->int_bits ?*/
+	if ((*cisr & 0x02) != 0) return -1;	/* XXX: INT 5 fixed */
 
 	/* Do something */
-	printf("%s: called, intr_enabled=%d\n",
-		__func__, sc->intr_enabled);
+	printf("%s: called\n", __func__);
 
-	/* Clear INT5 interrupt flag */
-	*cisr = 1;
+	sc->intr_handled = 1;
+	wakeup((void *)sc);
+
+	/* Clear interrupt flag */
+	*cisr = 1;				/* XXX: INT 5 fixed */
 
 	return 1;
 #else
