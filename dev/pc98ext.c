@@ -49,6 +49,7 @@ u_int8_t pc98ext_int_bits[] = {
 	0x04,	/* INT 4 */
 	0x02,	/* INT 5 */
 	0x01	/* INT 6 */
+/*	0x80	   NMI(?), not supported in this driver now */
 };
 
 /* autoconf stuff */
@@ -71,8 +72,8 @@ struct cfdriver pc98ext_cd = {
 
 /* prototypes */
 int pc98ext_intr(void *);
-int pc98ext_enable_int(struct pc98ext_softc *, u_int);
-int pc98ext_disable_int(struct pc98ext_softc *, u_int);
+int pc98ext_set_int(struct pc98ext_softc *, u_int);
+int pc98ext_reset_int(struct pc98ext_softc *, u_int);
 int pc98ext_wait_int(struct pc98ext_softc *, u_int);
 int pc98ext_check_int(struct pc98ext_softc *, u_int);
 
@@ -114,7 +115,8 @@ pc98extopen(dev_t dev, int flag, int mode, struct proc *p)
 {
 
 	switch (minor(dev)) {
-	case 0:
+	case 0:	/* memory area */
+	case 1:	/* I/O port area */
 		return 0;
 	default:
 		return ENXIO;
@@ -132,7 +134,8 @@ paddr_t
 pc98extmmap(dev_t dev, off_t off, int prot)
 {
 	switch (minor(dev)) {
-	case 0:
+	case 0:	/* memory area */
+	case 1:	/* I/O port area */
 		return off;
 	default:
 		return -1;
@@ -145,19 +148,17 @@ pc98extioctl(dev_t dev, u_long cmd, caddr_t data, int flags, struct proc *p)
 	struct pc98ext_softc *sc = pc98ext_cd.cd_devs[0];	/* XXX */
 	u_int level;
 
-	if (sc == NULL) {
-		printf("%s: no such device\n", __func__);
+	if (sc == NULL)
 		return ENXIO;
-	}
 
 	level = *(u_int *)data;
 
 	switch(cmd) {
 	case PCEXSETLEVEL:
-		return pc98ext_enable_int(sc, level);
+		return pc98ext_set_int(sc, level);
 
 	case PCEXRESETLEVEL:
-		return pc98ext_disable_int(sc, level);
+		return pc98ext_reset_int(sc, level);
 
 	case PCEXWAITINT:
 		return pc98ext_wait_int(sc, level);
@@ -171,7 +172,7 @@ pc98extioctl(dev_t dev, u_long cmd, caddr_t data, int flags, struct proc *p)
 }
 
 int
-pc98ext_enable_int(struct pc98ext_softc *sc, u_int level)
+pc98ext_set_int(struct pc98ext_softc *sc, u_int level)
 {
 	if ((level < 0) || (level > 6))
 		return EINVAL;
@@ -182,7 +183,7 @@ pc98ext_enable_int(struct pc98ext_softc *sc, u_int level)
 }
 
 int
-pc98ext_disable_int(struct pc98ext_softc *sc, u_int level)
+pc98ext_reset_int(struct pc98ext_softc *sc, u_int level)
 {
 	if ((level < 0) || (level > 6))
 		return EINVAL;
@@ -197,17 +198,18 @@ pc98ext_disable_int(struct pc98ext_softc *sc, u_int level)
 int
 pc98ext_wait_int(struct pc98ext_softc *sc, u_int level)
 {
+	int ret;
+
 	if ((level < 0) || (level > 6))
 		return EINVAL;
 
 	sc->intr_handled = 0;
 
-	while (sc->intr_handled == 0) {
-		tsleep((void *)sc, 0, "pc98ext", 0);
-		printf("%s: wakeup from tsleep\n", __func__);
-	}
+	ret = tsleep((void *)sc, 0 | PCATCH, "pc98ext", 100);
+	printf("%s: wakeup from tsleep%s\n", __func__,
+		ret == EWOULDBLOCK ? ", timeout" : "");
 
-	return 0;
+	return ret;
 }
 
 int
