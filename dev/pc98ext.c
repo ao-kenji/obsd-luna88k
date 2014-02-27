@@ -18,14 +18,11 @@
 
 /*
  * PC-9801 extention board slot support for luna88k.
- * (partially based on m88k/m88k/mem.c)
  */
 
 #include <sys/param.h>
-#include <sys/buf.h>	/* need this? */
 #include <sys/systm.h>	/* tsleep()/wakeup() */
 #include <sys/uio.h>
-#include <sys/malloc.h>	/* need this? */
 #include <sys/device.h>
 #include <sys/ioctl.h>
 
@@ -227,59 +224,29 @@ pc98ext_check_int(struct pc98ext_softc *sc, u_int level)
 int
 pc98ext_intr(void *arg)
 {
-#if 1
 	struct pc98ext_softc *sc = (struct pc98ext_softc *)arg;
+	u_int8_t int_status;
+	int i;
 
 	/*
 	 * Interrupt level 4 is shared with other devices.  So check my
 	 * interrupt status register first.
 	 */
-
-	/* Should we compare with use sc->int_bits ?*/
-	if ((*cisr & 0x02) != 0) return -1;	/* XXX: INT 5 fixed */
+	int_status = *cisr & sc->int_bits;
+	if (int_status == sc->int_bits) return -1;
 
 	/* Do something */
-	printf("%s: called\n", __func__);
+	printf("%s: called, 0x%02x\n", __func__, int_status);
 
 	sc->intr_handled = 1;
 	wakeup((void *)sc);
 
 	/* Clear interrupt flag */
-	*cisr = 1;				/* XXX: INT 5 fixed */
+	for (i = 0; i < 7; i++)
+		if ((int_status & (0x40 >> i)) == 0) {
+			*cisr = (u_int8_t)i;
+			printf("%s: clear INT%d\n", __func__, i);
+		}
 
 	return 1;
-#else
-	struct pc98ext_softc *sc = (struct pc98ext_softc *)arg;
-	u_int8_t int_stat;
-	u_int32_t int_bits;
-	int b;
-
-	if (sc->intr_enabled == 0) return 1;
-
-	/* If it is not waiting INT, return */
-	int_stat = *cisr;
-
-	int_bits = (u_int32_t)sc->int_bits;
-
-	while ((b = ff1(int_bits)) != 32) {
-		if (b > 7) {
-			printf("stray C-bus INT, bit %d\n", b);
-			int_bits |= ~(1 << b);
-			continue;
-		}
-		printf("check C-bus INT%d\n", 6 - b);
-		if ((int_stat & pc98ext_int_bits[6 - b]) == 0) {
-			printf("INT%d found\n", 6 - b);
-
-			/* do something */
-
-			/* clear CISR */
-			printf("%s: writing  %d\n", b);
-			*cisr = (u_int8_t)(b);
-			int_bits |= ~(1 << b);
-		}
-	}
-
-	return 1;
-#endif
 }
