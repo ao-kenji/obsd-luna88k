@@ -36,8 +36,6 @@
 
 #include <luna88k/luna88k/isr.h>
 
-#define PC98EXT_INT_BITS_NONE	0x00
-
 u_int8_t pc98ext_int_bits[] = {
 	0x40,	/* INT 0 */
 	0x20,	/* INT 1 */
@@ -55,7 +53,6 @@ void pc98ext_attach(struct device *, struct device *, void *);
 
 struct pc98ext_softc {
 	struct device sc_dev;
-	int intr_handled;
 	u_int8_t int_bits;
 };
 
@@ -99,7 +96,7 @@ pc98ext_attach(struct device *parent, struct device *self, void *args)
 	struct pc98ext_softc *sc = (struct pc98ext_softc *)self;
 	struct mainbus_attach_args *ma = args;
 
-	sc->int_bits = PC98EXT_INT_BITS_NONE;
+	sc->int_bits = 0x00;
 
 	isrlink_autovec(pc98ext_intr, (void *)self, ma->ma_ilvl,
 		ISRPRI_TTY, self->dv_xname);
@@ -186,8 +183,6 @@ pc98ext_reset_int(struct pc98ext_softc *sc, u_int level)
 		return EINVAL;
 
 	sc->int_bits &= ~pc98ext_int_bits[level];
-	/* clear interrupt flag */
-	*cisr = (u_int8_t)(6 - level);
 
 	return 0;
 }
@@ -200,12 +195,11 @@ pc98ext_wait_int(struct pc98ext_softc *sc, u_int level)
 	if ((level < 0) || (level > 6))
 		return EINVAL;
 
-	sc->intr_handled = 0;
-
-	ret = tsleep((void *)sc, 0 | PCATCH, "pc98ext", 100);
+	ret = tsleep((void *)sc, 0 | PCATCH, "pc98ext", 100 /* XXX */);
+#ifdef PC98EXT_DEBUG
 	printf("%s: wakeup from tsleep%s\n", __func__,
 		ret == EWOULDBLOCK ? ", timeout" : "");
-
+#endif
 	return ret;
 }
 
@@ -220,33 +214,47 @@ pc98ext_check_int(struct pc98ext_softc *sc, u_int level)
 
 /*
  * Interrupt handler
+ *
+ * PC-9801 extention slot (so-called 'C-bus' in Japan) has 8 own interrupt
+ * levels, INT0-INT6, and NMI.  On LUNA-88K{,2}, the interrput status register
+ * for C-bus is (u_int8_t *)0x91100000.
+ * Each bit of the register shows each interrupt status as follows:
+ *
+ * bit 7 = NMI(?)
+ * bit 6 = INT0
+ * bit 5 = INT1
+ *  :
+ * bit 0 = INT6
+ *
+ * If interrupt occurs, the bit becomes 0, otherwise 1.
  */
 int
 pc98ext_intr(void *arg)
 {
 	struct pc98ext_softc *sc = (struct pc98ext_softc *)arg;
 	u_int8_t int_status;
-	int i;
+	int n;
 
 	/*
-	 * Interrupt level 4 is shared with other devices.  So check my
-	 * interrupt status register first.
+	 * LUNA's interrupt level 4 is shared with other devices, such as
+	 * le(4), for example.  So we check:
+	 * - the value of our PC98 interrupt status register, and
+	 * - if the INT level is what we are looking for.
 	 */
 	int_status = *cisr & sc->int_bits;
 	if (int_status == sc->int_bits) return -1;
 
-	/* Do something */
-	printf("%s: called, 0x%02x\n", __func__, int_status);
-
-	sc->intr_handled = 1;
+	/* Just wakeup(9) for now */
 	wakeup((void *)sc);
 
-	/* Clear interrupt flag */
-	for (i = 0; i < 7; i++)
-		if ((int_status & (0x40 >> i)) == 0) {
-			*cisr = (u_int8_t)i;
-			printf("%s: clear INT%d\n", __func__, i);
-		}
+	/* Make a bit pattern that we should clear interrupt flag */
+	int_status = int_status ^ sc->int_bits;
+
+	/* Clear each interrupt flag */
+	while ((n = ff1(int_status)) != 32) {
+		*cisr = (u_int8_t)n;
+		int_status &= ~(0x01 << n); 
+	}
 
 	return 1;
 }
