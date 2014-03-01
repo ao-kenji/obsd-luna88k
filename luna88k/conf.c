@@ -55,7 +55,7 @@
 #include "ksyms.h"
 
 #include "lcd.h"
-#include "pc98ext.h"
+#include "pc98ex.h"
 #include "siotty.h"
 
 #include "wsdisplay.h"
@@ -122,9 +122,9 @@ struct cdevsw	cdevsw[] =
 	cdev_bpf_init(NBPFILTER,bpf),	/* 22: berkeley packet filter */
 	cdev_tun_init(NTUN,tun),	/* 23: network tunnel */
 	cdev_lkm_init(NLKM,lkm),	/* 24: loadable module driver */
-	cdev_notdef(),			/* 25 */
-	cdev_pc98ext_init(NPC98EXT,	/* 26: PC-9801 extention slot */
-		pc98ext),
+	cdev_pc98ex_init(NPC98EX,	/* 25: PC-9801 extention slot */
+		pc98ex),
+	cdev_notdef(),			/* 26 */
 	cdev_notdef(),			/* 27 */
 	cdev_notdef(),			/* 28 */
 	cdev_notdef(),			/* 29 */

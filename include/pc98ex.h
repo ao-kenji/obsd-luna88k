@@ -26,11 +26,11 @@
  * SUCH DAMAGE.
  */
 
-#ifndef _MACHINE_PC98EXT_H_
-#define _MACHINE_PC98EXT_H_
+#ifndef _MACHINE_PC98EX_H_
+#define _MACHINE_PC98EX_H_
 
 /*
- * PC-9801 extention board slot for OpenBSD/luna88k
+ * PC-9801 extention slot support for OpenBSD/luna88k
  */
 
 /* The ioctl defines */
@@ -40,4 +40,4 @@
 #define	PCEXWAITINT	_IOW('P', 3, int)	/* Wait for INT  */
 #define	PCEXCHECKINT	_IOW('P', 4, int)	/* Check INT status */
 
-#endif /* _MACHINE_PC98EXT_H_ */
+#endif /* _MACHINE_PC98EX_H_ */

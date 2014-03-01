@@ -37,11 +37,7 @@ cdev_decl(sio);
 
 cdev_decl(lcd);
 
-#if 0
-#define	pc98extread	pc98extrw
-#define	pc98extwrite	pc98extrw
-#endif
-cdev_decl(pc98ext);
+cdev_decl(pc98ex);
 
 /* open, close, write, ioctl */
 #define	cdev_lcd_init(c,n) { \
@@ -51,7 +47,7 @@ cdev_decl(pc98ext);
 	0, seltrue, (dev_type_mmap((*))) enodev }
 
 /* open, close, ioctl, mmap */
-#define cdev_pc98ext_init(c,n) { \
+#define cdev_pc98ex_init(c,n) { \
 	dev_init(c,n,open), dev_init(c,n,close), (dev_type_read((*))) enodev, \
 	(dev_type_write((*))) enodev, dev_init(c,n,ioctl), \
 	(dev_type_stop((*))) enodev, 0, selfalse, \
