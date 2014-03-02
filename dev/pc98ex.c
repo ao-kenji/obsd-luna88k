@@ -125,15 +125,26 @@ pc98exclose(dev_t dev, int flag, int mode, struct proc *p)
 }
 
 paddr_t
-pc98exmmap(dev_t dev, off_t off, int prot)
+pc98exmmap(dev_t dev, off_t offset, int prot)
 {
+	paddr_t cookie = -1;
+
 	switch (minor(dev)) {
 	case 0:	/* memory area */
+		if (offset >= 0 && offset < 0x1000000) {
+			cookie = (paddr_t)(0x90000000 + offset);
+			break;
+		}
 	case 1:	/* I/O port area */
-		return off;
+		if (offset >= 0 && offset < 0x10000) {
+			cookie = (paddr_t)(0x91000000 + offset);
+			break;
+		}
 	default:
-		return -1;
+		break;
 	}
+
+	return cookie;
 }
 
 int
