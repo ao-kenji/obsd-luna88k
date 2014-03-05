@@ -17,7 +17,7 @@
  */
 
 /*
- * PC-9801 extention board slot support for luna88k.
+ * Direct access driver for PC-9801 extention board slot on LUNA-88K{,2}
  */
 
 #include <sys/param.h>
@@ -35,6 +35,10 @@
 #include <uvm/uvm_extern.h>
 
 #include <luna88k/luna88k/isr.h>
+
+#if 0
+#define PC98EX_DEBUG
+#endif
 
 u_int8_t pc98ex_int_bits[] = {
 	0x40,	/* INT 0 */
@@ -95,8 +99,13 @@ pc98ex_attach(struct device *parent, struct device *self, void *args)
 {
 	struct pc98ex_softc *sc = (struct pc98ex_softc *)self;
 	struct mainbus_attach_args *ma = args;
+	u_int8_t i;
 
 	sc->int_bits = 0x00;
+
+	/* make sure of clearing interrupt flags for INT0-INT6 */
+	for (i = 0; i < 7; i++)
+		*cisr = i;
 
 	isrlink_autovec(pc98ex_intr, (void *)self, ma->ma_ilvl,
 		ISRPRI_TTY, self->dv_xname);
@@ -107,7 +116,6 @@ pc98ex_attach(struct device *parent, struct device *self, void *args)
 int
 pc98exopen(dev_t dev, int flag, int mode, struct proc *p)
 {
-
 	switch (minor(dev)) {
 	case 0:	/* memory area */
 	case 1:	/* I/O port area */
@@ -120,7 +128,6 @@ pc98exopen(dev_t dev, int flag, int mode, struct proc *p)
 int
 pc98exclose(dev_t dev, int flag, int mode, struct proc *p)
 {
-
 	return (0);
 }
 
@@ -131,15 +138,13 @@ pc98exmmap(dev_t dev, off_t offset, int prot)
 
 	switch (minor(dev)) {
 	case 0:	/* memory area */
-		if (offset >= 0 && offset < 0x1000000) {
+		if (offset >= 0 && offset < 0x1000000)
 			cookie = (paddr_t)(0x90000000 + offset);
-			break;
-		}
+		break;
 	case 1:	/* I/O port area */
-		if (offset >= 0 && offset < 0x10000) {
+		if (offset >= 0 && offset < 0x10000)
 			cookie = (paddr_t)(0x91000000 + offset);
-			break;
-		}
+		break;
 	default:
 		break;
 	}
@@ -208,8 +213,8 @@ pc98ex_wait_int(struct pc98ex_softc *sc, u_int level)
 
 	ret = tsleep((void *)sc, 0 | PCATCH, "pc98ex", 100 /* XXX */);
 #ifdef PC98EX_DEBUG
-	printf("%s: wakeup from tsleep%s\n", __func__,
-		ret == EWOULDBLOCK ? ", timeout" : "");
+	if (ret == EWOULDBLOCK)
+		printf("%s: timeout in tsleep\n", __func__);
 #endif
 	return ret;
 }
@@ -254,6 +259,11 @@ pc98ex_intr(void *arg)
 	 */
 	int_status = *cisr & sc->int_bits;
 	if (int_status == sc->int_bits) return -1;
+
+#ifdef PC98EX_DEBUG
+	printf("%s: called, *cisr=0x%02x, int_bits = 0x%02x\n",
+		__func__, *cisr, sc->int_bits);
+#endif
 
 	/* Just wakeup(9) for now */
 	wakeup((void *)sc);
