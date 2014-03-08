@@ -17,7 +17,7 @@
  */
 
 /*
- * Direct access driver for PC-9801 extention board slot on LUNA-88K{,2}
+ * PC-9801 extension board slot direct access driver for LUNA-88K{,2}
  */
 
 #include <sys/param.h>
@@ -225,16 +225,18 @@ pc98ex_check_int(struct pc98ex_softc *sc, u_int level)
 	if ((level < 0) || (level > 6))
 		return EINVAL;
 
+	/* Not implemented yet */
 	return (int)(*cisr & pc98ex_int_bits[level]);
 }
 
 /*
- * Interrupt handler
+ * Interrupt on PC-9801 extension slot
  *
- * PC-9801 extention slot (so-called 'C-bus' in Japan) has 8 own interrupt
- * levels, INT0-INT6, and NMI.  On LUNA-88K{,2}, the interrput status register
- * for C-bus is (u_int8_t *)0x91100000.
- * Each bit of the register shows each interrupt status as follows:
+ * PC-9801 extension slot (so-called 'C-bus' in Japan) has 8 own interrupt
+ * levels, INT0-INT6, and NMI.
+ * On LUNA-88K{,2}, the interrupt status register for C-bus is located at
+ * (u_int8_t *)0x91100000.  Each bit of the register becomes 0 when
+ * corresponding C-bus interrupt has occurred, otherwise 1.
  *
  * bit 7 = NMI(?)
  * bit 6 = INT0
@@ -242,7 +244,13 @@ pc98ex_check_int(struct pc98ex_softc *sc, u_int level)
  *  :
  * bit 0 = INT6
  *
- * If interrupt occurs, the bit becomes 0, otherwise 1.
+ * To clear the C-bus interrupt status, write the corresponding 'bit' number
+ * (as u_int_8) to the register.  For example, if you want to clear INT1:
+ *   *(u_int8_t *)0x91100000 = 5;
+ */
+
+/*
+ * Interrupt handler
  */
 int
 pc98ex_intr(void *arg)
@@ -254,11 +262,11 @@ pc98ex_intr(void *arg)
 	/*
 	 * LUNA's interrupt level 4 is shared with other devices, such as
 	 * le(4), for example.  So we check:
-	 * - the value of our PC98 interrupt status register, and
+	 * - the value of our C-bus interrupt status register, and
 	 * - if the INT level is what we are looking for.
 	 */
 	int_status = *cisr & sc->int_bits;
-	if (int_status == sc->int_bits) return -1;
+	if (int_status == sc->int_bits) return -1;	/* Not for me */
 
 #ifdef PC98EX_DEBUG
 	printf("%s: called, *cisr=0x%02x, int_bits = 0x%02x\n",
@@ -268,7 +276,7 @@ pc98ex_intr(void *arg)
 	/* Just wakeup(9) for now */
 	wakeup((void *)sc);
 
-	/* Make a bit pattern that we should clear interrupt flag */
+	/* Make the bit pattern that we should clear interrupt flag */
 	int_status = int_status ^ sc->int_bits;
 
 	/* Clear each interrupt flag */
